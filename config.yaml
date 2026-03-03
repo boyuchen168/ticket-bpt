@@ -1,0 +1,64 @@
+# === 认证信息（每次抢票前需要更新） ===
+auth:
+  # 从 Proxyman 抓包获取，header 名为 access-token
+  access_token: "eyJ0eXAiOiJKV1QiLCJjdHkiOiJKV1QiLCJ6aXAiOiJERUYiLCJhbGciOiJSUzUxMiJ9.eNp8kEFPAjEQhf9Lz5h0t9tpyxGDoUbAEIjihZTurGyUbbNbIivhv9sK6s1bp_O992bmRJw5hJ1uKkeGJ2K81yUZko8jskIqqyo0lawYZGRADk3tmu92LJzHy9v183oHCnv5-rIcP-rQrOmEO3dT3mtyHpCu725diWSY02jRYfuTta0_Lw1yN3nYTKNnd9iOfj-BM8FKQMUtywSlNKOisFxELipXySjFg6DSYgElyySXCcsBKfKI7YP9w8DmlEJlhGUFJEyZUmJ2cVu49xQ5Wq3HizSzN22oQ9w2KSMS3Nt1W1AGCruVYBRilXyAKpZffeYeWxPcv5MVEbUtmoDLeh9TMyFyTiUoVdAs3qC1Ufs01s96tpnqmU7xvU_ggODRXwWKU6XOXwAAAP__.ctdFlr8H5bdZIzQBOst6Z5HhufMf2fOCU1ftXB7AxwJKw1_to_4o5aP77FsfmqbxZFlgkTC5bEFKI5q8Y957pzvuUsi7Ip8tHklN3BQrsGN-fWgH5A5rxlfG5qanXk9vHFpVnxRRo5Zx2H_2E-FE70a3ldsynGnNgceALIreD5U"
+
+  # 从 Proxyman 抓包获取，header 名为 cookie
+  cookie: "acw_tc=781bad4317725086993132570e4707673b80ff587706dfdf58139131bed54f;ssxmod_itna3=C50qzxRDBG0=G=6KYKP7Ki7TitG2D+=cxDqi==Dmxiw2mebgARuIbERA2YGdYZgDBqYGFIDeqDBi4G=DpxeiT7SQgxDFQ36qDiDleGE94DL6T36L2tdk2DitD6ZiP0yTPFc+4FF9=raNhDiNDiqGXD7YDC4AVID=cjDApDY=DtkiDAdxKZqAK0hug/CeGiGWGQYWhKacrTcY7x397P4YxD;"
+
+  # 反爬 header，从 Proxyman 获取（可选，部分接口需要）
+  angry_dog: "QVDZgumyYSu7GPjyZl4Jdr82WrbKO2MxX_pwD6sOm-XnjjNxisEI0TVF7vztvB5pfUPW1yzEKP7sF5mKzG6nsCp0RX84_emuNQm7-cngHTJp2i1m_9Fex2jmR17ETkmibll6YUxtWHk5S2xXeDhKaw.WyIxLjEuMCIsIldFSVhJTl9NSU5JIl0"
+
+# === 平台固定参数 ===
+platform:
+  base_url: "https://65373d6e95c3170001074c57.caiyicloud.com"
+  merchant_id: "65373d6e95c3170001074c57"
+  app_id: "wxe3489c9feaf8f361"
+  ver: "4.53.10"
+  src: "weixin_mini"
+  terminal_src: "WEIXIN_MINI"
+
+# === 演出信息 ===
+show:
+  show_id: "676d5b8c3958580001b70179"
+  show_name: "快乐管理猿（独立演员不属于任何俱乐部公司）"
+  # 开售时间（北京时间）
+  sale_time: "2026-03-10 18:00:00"
+
+  # 场次选择（从 sessions 接口获取）
+  # 16:30场: 69781a378face90001188b39
+  # 19:30场: 69781a491203fa00012dd378
+  target_session_id: "69781a378face90001188b39"
+
+  # 票档选择（从 seat_plans 接口获取）
+  # 前区票 ¥580: 69781a78a009f9000190f701
+  # 中区票 ¥480: 69781a78a009f9000190f707
+  # 普区票 ¥380: 69781a78a009f9000190f70d
+  target_seat_plan_id: "69781a78a009f9000190f70d"
+
+  ticket_qty: 1
+  limit_qty: 3
+
+# === 观演人 ===
+audience:
+  # 从 user_audiences 接口获取
+  user_audience_ids:
+    - "6708ce69573b7a0001091a53"
+
+# === 抢票策略 ===
+strategy:
+  # 提前多少毫秒开始发请求
+  advance_ms: 500
+  # 并发线程数
+  threads: 3
+  # 最大重试次数
+  max_retries: 30
+  # 每次重试间隔（毫秒）
+  retry_interval_ms: 100
+
+# === 通知（可选） ===
+notify:
+  # Server酱 SendKey (https://sct.ftqq.com/)
+  server_chan_key: ""
+  # Bark推送 URL (https://github.com/Finb/Bark)
+  bark_url: ""
