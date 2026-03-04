@@ -1,0 +1,54 @@
+# tennis.bjofp.cn auto-booking config
+
+auth:
+  # Filled automatically by `python tennis_bot.py login ... --save`
+  userid: "43592"
+  bnglokbj: ""
+  csc: ""
+  cdc: ""
+  openId: ""
+  maopenId: ""
+
+  # Login flow inputs
+  mobile: ""
+  phonecode: ""
+  unionId: ""
+
+  # Optional booking verification fields (usually can stay empty)
+  ordercode: ""
+  captchaVerification: ""
+
+platform:
+  base_url: "https://tennis.bjofp.cn"
+  timeout_sec: 12
+
+court:
+  # Indoor hard court (user preference)
+  parktypecode: "6"
+
+  # Optional: set explicit ballcode; leave empty to auto-resolve from getHomeInfo
+  ballcode: ""
+  cardtypecode: "-1"
+  parkstatus: "0"
+
+  # Target booking
+  target_date: "2026-03-05"
+  target_time: "18:00"
+  duration_hours: 1
+  preferred_courts: []
+
+  # 0=card, 2=WeChat, 3=hour-card (platform behavior)
+  paywaycode: 2
+
+strategy:
+  # If booking_open_datetime is set, it takes precedence over booking_open_time.
+  booking_open_datetime: ""
+  booking_open_time: "07:00:00"
+  advance_ms: 500
+  threads: 3
+  max_retries: 30
+  retry_interval_ms: 200
+
+notify:
+  server_chan_key: ""
+  bark_url: ""
