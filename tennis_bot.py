@@ -341,8 +341,15 @@ class TennisClient:
             "POST", "/TennisCenterInterface/ddCardType/getHomeInfo.action", json_body={}
         )
 
-    def get_phone_code(self, loginname: str, code_type: int = 3) -> Dict[str, Any]:
-        params = {"loginname": loginname, "type": code_type}
+    def get_phone_code(self, mobile: str, code_type: int = 3) -> Dict[str, Any]:
+        # HAR confirms: loginname is the AES-ECB encrypted mobile (base64), not plain text.
+        from Crypto.Cipher import AES as _AES
+        import base64 as _b64
+        from Crypto.Util.Padding import pad as _pad
+        key = self.login_aes_key().encode("utf-8")
+        cipher = _AES.new(key, _AES.MODE_ECB)
+        encrypted = _b64.b64encode(cipher.encrypt(_pad(mobile.encode("utf-8"), 16))).decode()
+        params = {"loginname": encrypted, "type": code_type}
         return self._request("GET", "/TennisCenterInterface/umUser/getPhoneCode.action", params=params)
 
     def phone_code_login(
@@ -358,6 +365,7 @@ class TennisClient:
         if ma_open_id:
             params["maopenId"] = ma_open_id
 
+        # HAR confirms: this endpoint is GET with query params.
         response = self._request(
             "GET", "/TennisCenterInterface/umUser/phoneCodeLogin.action", params=params
         )
@@ -662,7 +670,7 @@ class TennisBooker:
             first_types = payload.get("parkFirstType", [])
             target_type = str(self.court_cfg.get("parktypecode", "6"))
             for ball_group in first_types:
-                ballcode = ball_group.get("id")
+                ballcode = ball_group.get("ballcode")
                 for item in ball_group.get("parktype", []):
                     if str(item.get("id")) == target_type and ballcode is not None:
                         return str(ballcode)
@@ -1044,20 +1052,130 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "action",
-        choices=["info", "login", "book", "test"],
-        help="info=show config, login=refresh auth tokens, book=auto booking, test=API checks",
+        choices=["info", "login", "auth", "book", "test"],
+        help=(
+            "info=show config, "
+            "login=two-step interactive login (request SMS then verify), "
+            "auth=inject tokens captured from proxy directly, "
+            "book=auto booking, "
+            "test=API checks"
+        ),
     )
 
     parser.add_argument("--mobile", default="", help="Mobile number for login")
-    parser.add_argument("--phonecode", default="", help="SMS phone code for login")
+    parser.add_argument("--phonecode", default="", help="SMS phone code (login action only)")
     parser.add_argument("--union-id", default="", help="unionId for login (optional)")
     parser.add_argument("--maopen-id", default="", help="maopenId for login (optional)")
-    parser.add_argument(
-        "--save",
-        action="store_true",
-        help="Persist login auth result back to config file",
-    )
+    parser.add_argument("--save", action="store_true", help="Persist result back to config file")
+
+    # auth (proxy token injection) arguments
+    parser.add_argument("--userid", default="", help="userid (auth action)")
+    parser.add_argument("--bnglokbj", default="", help="bnglokbj token (auth action)")
+    parser.add_argument("--csc", default="", help="csc signing key (auth action)")
+    parser.add_argument("--cdc", default="", help="cdc signing key (auth action)")
     return parser
+
+
+def _do_interactive_login(bot: "TennisBooker", args: argparse.Namespace) -> None:
+    """Two-step interactive login: request SMS code, then verify."""
+    mobile = args.mobile or str(bot.auth_cfg.get("mobile", "")).strip()
+    if not mobile:
+        raise SystemExit("login requires --mobile (or auth.mobile in config)")
+
+    union_id = args.union_id or str(bot.auth_cfg.get("unionId", "")).strip()
+    ma_open_id = args.maopen_id or str(bot.auth_cfg.get("maopenId", "")).strip()
+
+    phonecode = args.phonecode or str(bot.auth_cfg.get("phonecode", "")).strip()
+
+    if not phonecode:
+        # Step 1: request SMS code automatically
+        log.info("Requesting SMS code for %s ...", mobile)
+        sms_rsp = bot.client.get_phone_code(mobile)
+        if not bot.client.is_success(sms_rsp):
+            log.warning("getPhoneCode failed: %s | full response: %s", sms_rsp.get("respMsg"), sms_rsp)
+        else:
+            log.info("SMS sent. Check your phone.")
+
+        # Step 2: read from stdin
+        try:
+            phonecode = input("Enter SMS verification code: ").strip()
+        except (EOFError, KeyboardInterrupt):
+            raise SystemExit("\nAborted.")
+
+    if not phonecode:
+        raise SystemExit("No verification code provided.")
+
+    rsp = bot.login(
+        mobile=mobile,
+        phonecode=phonecode,
+        union_id=union_id,
+        ma_open_id=ma_open_id,
+        save_to_config=args.save,
+    )
+    if bot.client.is_success(rsp):
+        log.info("login success. updated auth: %s", json.dumps(rsp.get("auth_update", {}), ensure_ascii=False))
+        raise SystemExit(0)
+    log.error("login failed: %s", rsp.get("respMsg"))
+    raise SystemExit(1)
+
+
+def _do_auth_inject(bot: "TennisBooker", args: argparse.Namespace) -> None:
+    """Directly inject tokens captured from a proxy (Charles / mitmproxy / Proxyman).
+
+    Usage example:
+        python tennis_bot.py auth --save \\
+            --userid 43592 \\
+            --bnglokbj <value from proxy> \\
+            --csc <decrypted csc> \\
+            --cdc <decrypted cdc>
+
+    How to capture via proxy:
+        1. Configure Charles/Proxyman/mitmproxy on your phone/Mac.
+        2. Open the WeChat mini-program and log in normally.
+        3. Find the request to phoneCodeLogin.action in the proxy history.
+        4. The response JSON contains ftzmzcwc.bnglokbj (plain) and encrypted
+           ftzmzcwc.qlakclqf (csc) / ftzmzcwc.xqqflsoy (cdc).
+        5. Run the bot once with --phonecode to let it decrypt and --save, OR
+           decrypt manually with the AES key and pass plain values here.
+    """
+    userid = args.userid or str(bot.auth_cfg.get("userid", "")).strip()
+    bnglokbj = args.bnglokbj or str(bot.auth_cfg.get("bnglokbj", "")).strip()
+    csc = args.csc or str(bot.auth_cfg.get("csc", "")).strip()
+    cdc = args.cdc or str(bot.auth_cfg.get("cdc", "")).strip()
+    mobile = args.mobile or str(bot.auth_cfg.get("mobile", "")).strip()
+
+    missing = [n for n, v in [("userid", userid), ("bnglokbj", bnglokbj), ("csc", csc), ("cdc", cdc)] if not v]
+    if missing:
+        raise SystemExit(
+            f"auth requires: {', '.join(missing)}\n"
+            "Pass them via --userid --bnglokbj --csc --cdc, or populate auth section in config."
+        )
+
+    bot.auth_cfg.update({
+        "userid": userid,
+        "bnglokbj": bnglokbj,
+        "csc": csc,
+        "cdc": cdc,
+    })
+    if mobile:
+        bot.auth_cfg["mobile"] = mobile
+
+    bot.client.auth.userid = userid
+    bot.client.auth.bnglokbj = bnglokbj
+    bot.client.auth.csc = csc
+    bot.client.auth.cdc = cdc
+
+    if args.save:
+        bot.save_config()
+        log.info("Tokens saved to %s", bot.config_path)
+
+    # Quick sanity-check with a signed API call
+    role_rsp = bot.client.query_user_role()
+    if bot.client.is_success(role_rsp):
+        log.info("Token validation OK — queryUserRole succeeded.")
+        raise SystemExit(0)
+    log.error("Token validation failed: %s", role_rsp.get("respMsg"))
+    raise SystemExit(1)
 
 
 def main() -> None:
@@ -1075,25 +1193,12 @@ def main() -> None:
         raise SystemExit(0 if ok else 1)
 
     if args.action == "login":
-        mobile = args.mobile or str(bot.auth_cfg.get("mobile", "")).strip()
-        phonecode = args.phonecode or str(bot.auth_cfg.get("phonecode", "")).strip()
-        union_id = args.union_id or str(bot.auth_cfg.get("unionId", "")).strip()
-        ma_open_id = args.maopen_id or str(bot.auth_cfg.get("maopenId", "")).strip()
-        if not mobile or not phonecode:
-            raise SystemExit("login requires --mobile and --phonecode (or auth.mobile/auth.phonecode in config)")
+        _do_interactive_login(bot, args)
+        return
 
-        rsp = bot.login(
-            mobile=mobile,
-            phonecode=phonecode,
-            union_id=union_id,
-            ma_open_id=ma_open_id,
-            save_to_config=args.save,
-        )
-        if bot.client.is_success(rsp):
-            log.info("login success. updated auth: %s", json.dumps(rsp.get("auth_update", {}), ensure_ascii=False))
-            raise SystemExit(0)
-        log.error("login failed: %s", rsp.get("respMsg"))
-        raise SystemExit(1)
+    if args.action == "auth":
+        _do_auth_inject(bot, args)
+        return
 
     if args.action == "book":
         bot.show_info()

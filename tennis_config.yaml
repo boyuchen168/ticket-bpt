@@ -1,54 +1,47 @@
-# tennis.bjofp.cn auto-booking config
-
 auth:
-  # Filled automatically by `python tennis_bot.py login ... --save`
-  userid: "43592"
-  bnglokbj: ""
-  csc: ""
-  cdc: ""
-  openId: ""
-  maopenId: ""
-
-  # Login flow inputs
-  mobile: ""
-  phonecode: ""
-  unionId: ""
-
-  # Optional booking verification fields (usually can stay empty)
-  ordercode: ""
-  captchaVerification: ""
-
+  userid: '43592'
+  bnglokbj: eyJhbGciOiJIUzI1NiJ9.eyJHVUlEIjoiODU5YjZiZjU0MzU1NDgxYjk4OWJmZTVkNGVjODk2NTYiLCJleHAiOjE4NjI4NTUxNzAsImlhdCI6MTc3Mjg1NTE3MCwianRpIjoiNTBhMDg4OGJmYjdhNDE2NTk1ODNkM2EwZDQ0ZjdjNjkifQ.G2i2kSdNhoqiJibHU_DPogVEq2ffBu92hDu-wesyzME
+  csc: 7c497fb5fc91b7d287cb251fd1256f94
+  cdc: 8401512040a266ae007626a94c1dfc29
+  openId: ''
+  maopenId: ''
+  mobile: '15231275555'
+  phonecode: ''
+  unionId: ''
+  ordercode: ''
+  captchaVerification: ''
 platform:
-  base_url: "https://tennis.bjofp.cn"
+  base_url: https://tennis.bjofp.cn
   timeout_sec: 12
-
 court:
-  # Indoor hard court (user preference)
-  parktypecode: "6"
-
-  # Optional: set explicit ballcode; leave empty to auto-resolve from getHomeInfo
-  ballcode: ""
-  cardtypecode: "-1"
-  parkstatus: "0"
-
-  # Target booking
-  target_date: "2026-03-05"
-  target_time: "18:00"
+  parktypecode: '13'
+  ballcode: ''
+  cardtypecode: '-1'
+  parkstatus: '0'
+  target_date: '2026-03-09'
+  target_time: '8:00'
+  target_time_end: '10:00'
   duration_hours: 1
   preferred_courts: []
-
-  # 0=card, 2=WeChat, 3=hour-card (platform behavior)
   paywaycode: 2
-
 strategy:
-  # If booking_open_datetime is set, it takes precedence over booking_open_time.
-  booking_open_datetime: ""
-  booking_open_time: "07:00:00"
+  booking_open_datetime: ''
+  booking_open_time: 07:00:00
   advance_ms: 500
-  threads: 3
+  retries_per_slot: 2
   max_retries: 30
   retry_interval_ms: 200
-
 notify:
-  server_chan_key: ""
-  bark_url: ""
+  server_chan_key: ''
+  bark_url: ''
+
+
+#Home Info / Court Types:
+#ballcode=1 (网球), parktypecodes:
+#3 → parktypecode=4, "室外硬地", 场馆: K场 (18个场地: K1-K18)
+#4 → parktypecode=5, "室外草地", 场馆: G场 (5个场地: G3-G5)
+#13 → parktypecode=6, "室内硬地", 场馆: A场+B场 (各6个)
+#21 → parktypecode=7, "室内红土", 场馆: H场 (2个)
+#27 → parktypecode=27, "网球墙", 场馆: 网球墙 (4个)
+#ballcode=2 (羽毛球), parktypecode=9, 场馆: 羽毛球馆 (Y1-Y5)
+#ballcode=3 (匹克球), parktypecode=28, 场馆: 匹克球 (P1-P3)
