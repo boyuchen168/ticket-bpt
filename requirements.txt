@@ -2,3 +2,4 @@ requests>=2.31.0
 pyyaml>=6.0
 ntplib>=0.4.0
 pycryptodome>=3.19.0
+flask>=3.0.0

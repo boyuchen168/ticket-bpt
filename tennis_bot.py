@@ -717,8 +717,12 @@ class TennisBooker:
                 time.sleep(min(5.0, remain / 1000 - 1))
             elif remain > 1000:
                 time.sleep(0.2)
+            elif remain > 100:
+                time.sleep(0.005)
             else:
-                time.sleep(0.01)
+                while self.client.now_ms() < target_ms:
+                    pass
+                return
 
     # ------------------------------------------------------------------
     # Court selection
@@ -895,6 +899,7 @@ class TennisBooker:
     def _try_book(self, thread_id: int, target_date: str, ballcode: str) -> bool:
         retries = int(self.strategy_cfg.get("max_retries", 30))
         sleep_s = int(self.strategy_cfg.get("retry_interval_ms", 200)) / 1000.0
+        skip_price_check = bool(self.strategy_cfg.get("skip_price_check", False))
 
         parktypeinfo = str(self.court_cfg.get("parktypecode", "6"))
         cardtypecode = str(self.court_cfg.get("cardtypecode", "-1"))
@@ -944,19 +949,21 @@ class TennisBooker:
                 json.dumps(park_list, ensure_ascii=False),
             )
 
-            price_rsp = self.client.show_price_by_user(park_list, userid=self.client.auth.userid)
-            if not self.client.is_success(price_rsp):
-                log.warning("[T%s] showPriceByUser failed: %s", thread_id, price_rsp.get("respMsg"))
-                time.sleep(sleep_s)
-                continue
-            price_payload = self.client.unwrap_payload(price_rsp)
-            wx_sum = None
-            if isinstance(price_payload, dict):
-                wx_price = price_payload.get("wxPrice", {})
-                if isinstance(wx_price, dict):
-                    wx_sum = wx_price.get("sum")
-            if wx_sum is not None:
-                log.info("[T%s] wxPrice sum: %s", thread_id, wx_sum)
+            price_payload = None
+            if not skip_price_check:
+                price_rsp = self.client.show_price_by_user(park_list, userid=self.client.auth.userid)
+                if not self.client.is_success(price_rsp):
+                    log.warning("[T%s] showPriceByUser failed: %s", thread_id, price_rsp.get("respMsg"))
+                    time.sleep(sleep_s)
+                    continue
+                price_payload = self.client.unwrap_payload(price_rsp)
+                wx_sum = None
+                if isinstance(price_payload, dict):
+                    wx_price = price_payload.get("wxPrice", {})
+                    if isinstance(wx_price, dict):
+                        wx_sum = wx_price.get("sum")
+                if wx_sum is not None:
+                    log.info("[T%s] wxPrice sum: %s", thread_id, wx_sum)
 
             order_rsp = self.client.add_park_order(
                 park_list,
@@ -1019,6 +1026,18 @@ class TennisBooker:
 
         ballcode = self.resolve_ballcode()
         log.info("Using ballcode=%s, parktypecode=%s", ballcode, self.court_cfg.get("parktypecode", "6"))
+
+        target_dt = self._target_booking_datetime()
+        if target_dt is not None:
+            prewarm_sec = int(self.strategy_cfg.get("prewarm_sec", 30))
+            target_ms = int(target_dt.timestamp() * 1000) - int(self.strategy_cfg.get("advance_ms", 500))
+            prewarm_ms = int(target_dt.timestamp() * 1000) - prewarm_sec * 1000
+            now = self.client.now_ms()
+            if now < target_ms:
+                if now < prewarm_ms:
+                    time.sleep((prewarm_ms - now) / 1000.0)
+                log.info("Prewarm: queryBookDate once at T-%ss.", prewarm_sec)
+                self.client.query_dates()
 
         self.wait_for_open_time()
         log.info("Starting booking threads...")

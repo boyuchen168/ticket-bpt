@@ -1,0 +1,363 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tennis Booking Admin</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-100 text-slate-900">
+  <div class="max-w-5xl mx-auto p-6 space-y-5">
+    <header class="bg-white rounded-xl shadow-sm p-5 flex flex-wrap gap-3 items-center justify-between">
+      <div>
+        <h1 class="text-xl font-semibold">Tennis Booking Admin</h1>
+        <p class="text-sm text-slate-500">配置 parktype / 预约日期 / 自动 cron 抢票</p>
+      </div>
+      <div class="flex gap-2">
+        <button id="saveBtn" class="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm">保存配置</button>
+        <button id="runBtn" class="px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm">立即执行</button>
+      </div>
+    </header>
+
+    <section class="bg-white rounded-xl shadow-sm p-5 space-y-4">
+      <h2 class="text-base font-semibold">1) 预约参数</h2>
+      <div class="grid md:grid-cols-2 gap-4">
+        <label class="space-y-1">
+          <span class="text-sm text-slate-600">parktypecode</span>
+          <select id="parktypecode" class="w-full border rounded-lg px-3 py-2"></select>
+          <p id="parktypeDesc" class="text-xs text-slate-500"></p>
+        </label>
+        <label class="space-y-1">
+          <span class="text-sm text-slate-600">target_date (想打球日期)</span>
+          <input id="target_date" type="date" class="w-full border rounded-lg px-3 py-2" />
+        </label>
+        <label class="space-y-1">
+          <span class="text-sm text-slate-600">target_time</span>
+          <input id="target_time" type="time" class="w-full border rounded-lg px-3 py-2" />
+        </label>
+        <label class="space-y-1">
+          <span class="text-sm text-slate-600">target_time_end</span>
+          <input id="target_time_end" type="time" class="w-full border rounded-lg px-3 py-2" />
+        </label>
+        <label class="space-y-1">
+          <span class="text-sm text-slate-600">duration_hours</span>
+          <input id="duration_hours" type="number" min="1" max="4" class="w-full border rounded-lg px-3 py-2" />
+        </label>
+        <label class="space-y-1">
+          <span class="text-sm text-slate-600">preferred_courts (逗号分隔)</span>
+          <input id="preferred_courts" type="text" placeholder="A1,A2" class="w-full border rounded-lg px-3 py-2" />
+        </label>
+      </div>
+    </section>
+
+    <section class="bg-white rounded-xl shadow-sm p-5 space-y-4">
+      <h2 class="text-base font-semibold">2) 抢票策略</h2>
+      <div class="grid md:grid-cols-3 gap-4">
+        <label class="space-y-1">
+          <span class="text-sm text-slate-600">advance_days</span>
+          <input id="advance_days" type="number" min="1" max="14" class="w-full border rounded-lg px-3 py-2" />
+        </label>
+        <label class="space-y-1">
+          <span class="text-sm text-slate-600">booking_open_time</span>
+          <input id="booking_open_time" type="time" step="60" class="w-full border rounded-lg px-3 py-2" />
+        </label>
+        <label class="space-y-1">
+          <span class="text-sm text-slate-600">advance_ms</span>
+          <input id="advance_ms" type="number" min="0" class="w-full border rounded-lg px-3 py-2" />
+        </label>
+        <label class="space-y-1">
+          <span class="text-sm text-slate-600">prewarm_sec</span>
+          <input id="prewarm_sec" type="number" min="0" class="w-full border rounded-lg px-3 py-2" />
+        </label>
+        <label class="space-y-1">
+          <span class="text-sm text-slate-600">max_retries</span>
+          <input id="max_retries" type="number" min="1" class="w-full border rounded-lg px-3 py-2" />
+        </label>
+        <label class="space-y-1">
+          <span class="text-sm text-slate-600">retry_interval_ms</span>
+          <input id="retry_interval_ms" type="number" min="1" class="w-full border rounded-lg px-3 py-2" />
+        </label>
+      </div>
+      <div class="flex items-center gap-2">
+        <input id="threads" type="number" min="1" max="10" class="w-28 border rounded-lg px-3 py-2" />
+        <span class="text-sm text-slate-600">threads</span>
+        <label class="ml-4 text-sm text-slate-700 flex items-center gap-2">
+          <input id="skip_price_check" type="checkbox" />
+          skip_price_check
+        </label>
+      </div>
+      <div class="rounded-lg bg-slate-50 border p-3 text-sm space-y-1">
+        <div>预约日期: <span id="playDatePreview" class="font-mono"></span></div>
+        <div>开放预订: <span id="openDisplayPreview" class="font-mono"></span></div>
+        <div>写入 booking_open_datetime: <span id="openDateTimePreview" class="font-mono"></span></div>
+      </div>
+    </section>
+
+    <section class="bg-white rounded-xl shadow-sm p-5 space-y-4">
+      <h2 class="text-base font-semibold">3) Cron 定时任务</h2>
+      <div class="grid md:grid-cols-4 gap-3 items-end">
+        <label class="space-y-1 md:col-span-1">
+          <span class="text-sm text-slate-600">buffer_minutes</span>
+          <input id="buffer_minutes" type="number" min="1" max="60" class="w-full border rounded-lg px-3 py-2" />
+        </label>
+        <button id="previewCronBtn" class="px-4 py-2 rounded-lg bg-slate-700 text-white text-sm">预览</button>
+        <button id="setCronBtn" class="px-4 py-2 rounded-lg bg-teal-600 text-white text-sm">启用 Cron</button>
+        <button id="removeCronBtn" class="px-4 py-2 rounded-lg bg-rose-600 text-white text-sm">移除 Cron</button>
+      </div>
+      <div class="rounded-lg bg-slate-50 border p-3 text-sm space-y-2">
+        <div>Cron 状态: <span id="cronStatus" class="font-semibold text-slate-700">loading</span></div>
+        <div>计划启动时间: <span id="cronStartPreview" class="font-mono"></span></div>
+        <div class="break-all">当前 cron: <span id="cronEntry" class="font-mono text-xs"></span></div>
+      </div>
+    </section>
+
+    <section class="bg-white rounded-xl shadow-sm p-5 space-y-4">
+      <h2 class="text-base font-semibold">4) 通知配置</h2>
+      <div class="grid md:grid-cols-2 gap-4">
+        <label class="space-y-1">
+          <span class="text-sm text-slate-600">server_chan_key</span>
+          <input id="server_chan_key" type="text" class="w-full border rounded-lg px-3 py-2" />
+        </label>
+        <label class="space-y-1">
+          <span class="text-sm text-slate-600">bark_url</span>
+          <input id="bark_url" type="text" class="w-full border rounded-lg px-3 py-2" />
+        </label>
+      </div>
+    </section>
+
+    <section class="bg-white rounded-xl shadow-sm p-5 space-y-4">
+      <h2 class="text-base font-semibold">5) 日志</h2>
+      <div class="flex gap-2">
+        <button id="refreshLogsBtn" class="px-3 py-1 rounded-lg bg-slate-700 text-white text-xs">刷新日志</button>
+        <label class="text-sm flex items-center gap-2">
+          <input id="autoRefreshLogs" type="checkbox" checked />
+          自动刷新(3s)
+        </label>
+      </div>
+      <pre id="logsBox" class="bg-slate-900 text-emerald-300 p-3 rounded-lg h-64 overflow-auto text-xs"></pre>
+    </section>
+  </div>
+
+  <script>
+    const courtTypes = [];
+
+    function el(id) { return document.getElementById(id); }
+    function toHHMMSS(v) { return v && v.length === 5 ? v + ":00" : (v || "00:00:00"); }
+    function setText(id, value) { el(id).textContent = value || ""; }
+
+    function updateParktypeDesc() {
+      const selected = courtTypes.find((x) => x.value === el("parktypecode").value);
+      if (!selected) return;
+      setText(
+        "parktypeDesc",
+        `${selected.label} | ${selected.sport} | 场馆: ${selected.venue} | ballcode=${selected.ballcode}`
+      );
+    }
+
+    async function loadCourtTypes() {
+      const data = await fetch("/api/court_types").then((r) => r.json());
+      courtTypes.splice(0, courtTypes.length, ...data);
+      const select = el("parktypecode");
+      select.innerHTML = "";
+      for (const item of data) {
+        const option = document.createElement("option");
+        option.value = item.value;
+        option.textContent = `${item.value} - ${item.label} (${item.sport})`;
+        select.appendChild(option);
+      }
+    }
+
+    function collectPayload() {
+      const preferred = el("preferred_courts").value
+        .split(",")
+        .map((x) => x.trim())
+        .filter(Boolean);
+      return {
+        court: {
+          parktypecode: el("parktypecode").value,
+          target_date: el("target_date").value,
+          target_time: el("target_time").value,
+          target_time_end: el("target_time_end").value,
+          duration_hours: Number(el("duration_hours").value || "1"),
+          preferred_courts: preferred,
+        },
+        strategy: {
+          advance_days: Number(el("advance_days").value || "4"),
+          booking_open_time: toHHMMSS(el("booking_open_time").value),
+          advance_ms: Number(el("advance_ms").value || "10000"),
+          prewarm_sec: Number(el("prewarm_sec").value || "30"),
+          max_retries: Number(el("max_retries").value || "30"),
+          retry_interval_ms: Number(el("retry_interval_ms").value || "200"),
+          threads: Number(el("threads").value || "3"),
+          skip_price_check: el("skip_price_check").checked,
+        },
+        notify: {
+          server_chan_key: el("server_chan_key").value.trim(),
+          bark_url: el("bark_url").value.trim(),
+        },
+      };
+    }
+
+    function applyConfig(cfg) {
+      const court = cfg.court || {};
+      const strategy = cfg.strategy || {};
+      const notify = cfg.notify || {};
+
+      el("parktypecode").value = String(court.parktypecode || "6");
+      el("target_date").value = court.target_date || "";
+      el("target_time").value = court.target_time || "14:00";
+      el("target_time_end").value = court.target_time_end || "18:00";
+      el("duration_hours").value = String(court.duration_hours ?? 1);
+      el("preferred_courts").value = Array.isArray(court.preferred_courts)
+        ? court.preferred_courts.join(",")
+        : "";
+
+      el("advance_days").value = String(strategy.advance_days ?? 4);
+      el("booking_open_time").value = String(strategy.booking_open_time || "00:00:00").slice(0, 5);
+      el("advance_ms").value = String(strategy.advance_ms ?? 10000);
+      el("prewarm_sec").value = String(strategy.prewarm_sec ?? 30);
+      el("max_retries").value = String(strategy.max_retries ?? 30);
+      el("retry_interval_ms").value = String(strategy.retry_interval_ms ?? 200);
+      el("threads").value = String(strategy.threads ?? 3);
+      el("skip_price_check").checked = Boolean(strategy.skip_price_check);
+
+      el("server_chan_key").value = notify.server_chan_key || "";
+      el("bark_url").value = notify.bark_url || "";
+
+      el("buffer_minutes").value = "10";
+      updateParktypeDesc();
+    }
+
+    async function loadConfig() {
+      const resp = await fetch("/api/config").then((r) => r.json());
+      applyConfig(resp.config || {});
+      if (resp.booking_info) {
+        setText("playDatePreview", resp.booking_info.play_date);
+        setText("openDisplayPreview", resp.booking_info.booking_open_display);
+        setText("openDateTimePreview", resp.booking_info.booking_open_datetime);
+      }
+    }
+
+    async function saveConfig() {
+      const payload = collectPayload();
+      const resp = await fetch("/api/config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      }).then((r) => r.json());
+
+      if (!resp.ok) {
+        alert("保存失败");
+        return;
+      }
+      setText("playDatePreview", resp.booking_info.play_date);
+      setText("openDisplayPreview", resp.booking_info.booking_open_display);
+      setText("openDateTimePreview", resp.booking_info.booking_open_datetime);
+    }
+
+    async function previewCron() {
+      const payload = collectPayload();
+      const body = {
+        target_date: payload.court.target_date,
+        booking_open_time: payload.strategy.booking_open_time,
+        advance_days: payload.strategy.advance_days,
+        buffer_minutes: Number(el("buffer_minutes").value || "10"),
+      };
+
+      const resp = await fetch("/api/cron/preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await resp.json();
+      if (!resp.ok || !data.ok) {
+        // Silently skip if target_date is not yet filled in
+        return;
+      }
+
+      const timing = data.timing;
+      setText("playDatePreview", timing.play_date);
+      setText("openDisplayPreview", timing.booking_open_display);
+      setText("openDateTimePreview", timing.booking_open_datetime);
+      setText("cronStartPreview", timing.cron_start_datetime);
+    }
+
+    async function refreshCronStatus() {
+      const data = await fetch("/api/cron").then((r) => r.json());
+      setText("cronStatus", data.active ? "✅ active" : "inactive");
+      setText("cronEntry", data.entry || "");
+    }
+
+    async function setCron() {
+      await saveConfig();
+      const body = { buffer_minutes: Number(el("buffer_minutes").value || "10") };
+      const data = await fetch("/api/cron/set", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      }).then((r) => r.json());
+
+      if (!data.ok) {
+        alert("设置 cron 失败");
+        return;
+      }
+      setText("cronStartPreview", data.timing.cron_start_datetime);
+      setText("cronEntry", data.cron_line);
+      setText("cronStatus", "✅ active");
+    }
+
+    async function removeCron() {
+      const data = await fetch("/api/cron/remove", { method: "DELETE" }).then((r) => r.json());
+      if (!data.ok) {
+        alert("移除 cron 失败");
+        return;
+      }
+      setText("cronStatus", "inactive");
+      setText("cronEntry", "");
+      setText("cronStartPreview", "");
+    }
+
+    async function runNow() {
+      const data = await fetch("/api/run", { method: "POST" }).then((r) => r.json());
+      if (!data.ok) {
+        alert("启动失败");
+        return;
+      }
+      alert(`脚本已启动, PID=${data.pid}`);
+      await refreshLogs();
+    }
+
+    async function refreshLogs() {
+      const data = await fetch("/api/logs").then((r) => r.json());
+      el("logsBox").textContent = (data.lines || []).join("\n");
+      el("logsBox").scrollTop = el("logsBox").scrollHeight;
+    }
+
+    async function init() {
+      await loadCourtTypes();
+      await loadConfig();
+      await previewCron();
+      await refreshCronStatus();
+      await refreshLogs();
+
+      el("saveBtn").addEventListener("click", saveConfig);
+      el("runBtn").addEventListener("click", runNow);
+      el("previewCronBtn").addEventListener("click", previewCron);
+      el("setCronBtn").addEventListener("click", setCron);
+      el("removeCronBtn").addEventListener("click", removeCron);
+      el("refreshLogsBtn").addEventListener("click", refreshLogs);
+      el("parktypecode").addEventListener("change", updateParktypeDesc);
+
+      for (const id of ["target_date", "advance_days", "booking_open_time", "buffer_minutes"]) {
+        el(id).addEventListener("change", previewCron);
+      }
+
+      window.setInterval(() => {
+        if (el("autoRefreshLogs").checked) refreshLogs();
+      }, 3000);
+    }
+
+    init();
+  </script>
+</body>
+</html>
