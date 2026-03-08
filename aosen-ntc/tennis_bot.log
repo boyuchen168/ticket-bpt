@@ -20,3 +20,424 @@ Traceback (most recent call last):
   File "/Users/jason/IdeaProjects/ticket-bpt/tennis_bot.py", line 1054, in auto_book
     time.sleep((prewarm_ms - now) / 1000.0)
 KeyboardInterrupt
+
+===== manual run at 2026-03-08 12:42:05 =====
+12:42:05.531 [INFO] ============================================================
+12:42:05.531 [INFO] Base URL: https://tennis.bjofp.cn
+12:42:05.531 [INFO] User ID: 43592
+12:42:05.531 [INFO] Target date: 2026-03-08
+12:42:05.531 [INFO] Target time: 14:00
+12:42:05.531 [INFO] Court type code: 4
+12:42:05.531 [INFO] Ball code: 1
+12:42:05.531 [INFO] Threads: 3
+12:42:05.531 [INFO] ============================================================
+12:42:05.572 [INFO] NTP offset: +205 ms
+12:42:05.572 [INFO] Using ballcode=1, parktypecode=4
+12:42:05.595 [INFO] NTP offset: +201 ms
+12:42:05.595 [INFO] Open time already reached, starting immediately.
+12:42:05.595 [INFO] Starting booking threads...
+12:42:05.595 [INFO] [T1] Attempt 1/30
+12:42:05.595 [INFO] [T2] Attempt 1/30
+12:42:05.595 [INFO] [T3] Attempt 1/30
+12:42:05.955 [INFO] [T2] Candidate slots: [{"date": "2026-03-08", "time": 17, "parkid": 39, "id": "G317", "parkname": "G3", "timeStr": "17:00-18:00", "price": 120}, {"date": "2026-03-08", "time": 18, "parkid": 39, "id": "G318", "parkname": "G3", "timeStr": "18:00-19:00", "price": 120}]
+12:42:05.998 [INFO] [T3] Candidate slots: [{"date": "2026-03-08", "time": 17, "parkid": 39, "id": "G317", "parkname": "G3", "timeStr": "17:00-18:00", "price": 120}, {"date": "2026-03-08", "time": 18, "parkid": 39, "id": "G318", "parkname": "G3", "timeStr": "18:00-19:00", "price": 120}]
+12:42:06.036 [INFO] [T1] Candidate slots: [{"date": "2026-03-08", "time": 17, "parkid": 39, "id": "G317", "parkname": "G3", "timeStr": "17:00-18:00", "price": 120}, {"date": "2026-03-08", "time": 18, "parkid": 39, "id": "G318", "parkname": "G3", "timeStr": "18:00-19:00", "price": 120}]
+12:42:06.041 [WARNING] [T3] addParkOrder failed: http 403: {"respMsg":"请求太频繁"}
+12:42:06.057 [WARNING] [T1] addParkOrder failed: http 403: {"respMsg":"请求太频繁"}
+12:42:06.245 [INFO] [T3] Attempt 2/30
+12:42:06.259 [INFO] [T1] Attempt 2/30
+12:42:06.414 [INFO] [T2] getParkOrderState success for 2603081480183834122776576
+12:42:06.536 [INFO] [T3] Candidate slots: [{"date": "2026-03-08", "time": 17, "parkid": 39, "id": "G317", "parkname": "G3", "timeStr": "17:00-18:00", "price": 120}, {"date": "2026-03-08", "time": 18, "parkid": 39, "id": "G318", "parkname": "G3", "timeStr": "18:00-19:00", "price": 120}]
+12:42:06.541 [INFO] [T1] Candidate slots: [{"date": "2026-03-08", "time": 17, "parkid": 39, "id": "G317", "parkname": "G3", "timeStr": "17:00-18:00", "price": 120}, {"date": "2026-03-08", "time": 18, "parkid": 39, "id": "G318", "parkname": "G3", "timeStr": "18:00-19:00", "price": 120}]
+12:42:06.565 [WARNING] [T3] addParkOrder failed: http 403: {"respMsg":"请求太频繁"}
+12:42:06.566 [WARNING] [T1] addParkOrder failed: http 403: {"respMsg":"请求太频繁"}
+12:42:06.772 [INFO] Booking succeeded: {"orderNo": "2603081480183834122776576", "parkList": [{"date": "2026-03-08", "time": 17, "parkid": 39, "id": "G317", "parkname": "G3", "timeStr": "17:00-18:00", "price": 120}, {"date": "2026-03-08", "time": 18, "parkid": 39, "id": "G318", "parkname": "G3", "timeStr": "18:00-19:00", "price": 120}], "priceResponse": null, "orderStateResponse": {"respMsg": "成功！", "respCode": 1001}}
+
+===== manual run at 2026-03-08 12:44:35 =====
+12:44:35.944 [INFO] ============================================================
+12:44:35.944 [INFO] Base URL: https://tennis.bjofp.cn
+12:44:35.945 [INFO] User ID: 43592
+12:44:35.945 [INFO] Target date: 2026-03-08
+12:44:35.945 [INFO] Target time: 14:00
+12:44:35.945 [INFO] Court type code: 4
+12:44:35.945 [INFO] Ball code: 1
+12:44:35.945 [INFO] Threads: 3
+12:44:35.945 [INFO] ============================================================
+12:44:35.987 [INFO] NTP offset: +208 ms
+12:44:35.987 [INFO] Using ballcode=1, parktypecode=4
+12:44:36.016 [INFO] NTP offset: +203 ms
+12:44:36.016 [INFO] Open time already reached, starting immediately.
+12:44:36.016 [INFO] Starting booking threads...
+12:44:36.016 [INFO] [T1] Attempt 1/30
+12:44:36.016 [INFO] [T2] Attempt 1/30
+12:44:36.016 [INFO] [T3] Attempt 1/30
+12:44:36.397 [INFO] [T1] Candidate slots: [{"date": "2026-03-08", "time": 17, "parkid": 39, "id": "G317", "parkname": "G3", "timeStr": "17:00-18:00", "price": 120}, {"date": "2026-03-08", "time": 18, "parkid": 39, "id": "G318", "parkname": "G3", "timeStr": "18:00-19:00", "price": 120}]
+12:44:36.409 [INFO] [T2] Candidate slots: [{"date": "2026-03-08", "time": 17, "parkid": 39, "id": "G317", "parkname": "G3", "timeStr": "17:00-18:00", "price": 120}, {"date": "2026-03-08", "time": 18, "parkid": 39, "id": "G318", "parkname": "G3", "timeStr": "18:00-19:00", "price": 120}]
+12:44:36.437 [WARNING] [T2] addParkOrder failed: http 403: {"respMsg":"请求太频繁"}
+12:44:36.438 [INFO] [T3] Candidate slots: [{"date": "2026-03-08", "time": 17, "parkid": 39, "id": "G317", "parkname": "G3", "timeStr": "17:00-18:00", "price": 120}, {"date": "2026-03-08", "time": 18, "parkid": 39, "id": "G318", "parkname": "G3", "timeStr": "18:00-19:00", "price": 120}]
+12:44:36.460 [WARNING] [T3] addParkOrder failed: http 403: {"respMsg":"请求太频繁"}
+12:44:36.638 [INFO] [T2] Attempt 2/30
+12:44:36.662 [INFO] [T3] Attempt 2/30
+12:44:36.862 [INFO] [T1] getParkOrderState success for 2603081480184465168396288
+12:44:36.898 [INFO] [T2] Candidate slots: [{"date": "2026-03-08", "time": 17, "parkid": 39, "id": "G317", "parkname": "G3", "timeStr": "17:00-18:00", "price": 120}, {"date": "2026-03-08", "time": 18, "parkid": 39, "id": "G318", "parkname": "G3", "timeStr": "18:00-19:00", "price": 120}]
+12:44:36.919 [WARNING] [T2] addParkOrder failed: http 403: {"respMsg":"请求太频繁"}
+12:44:36.944 [INFO] [T3] Candidate slots: [{"date": "2026-03-08", "time": 17, "parkid": 39, "id": "G317", "parkname": "G3", "timeStr": "17:00-18:00", "price": 120}, {"date": "2026-03-08", "time": 18, "parkid": 39, "id": "G318", "parkname": "G3", "timeStr": "18:00-19:00", "price": 120}]
+12:44:36.967 [WARNING] [T3] addParkOrder failed: http 403: {"respMsg":"请求太频繁"}
+12:44:37.171 [INFO] Booking succeeded: {"orderNo": "2603081480184465168396288", "parkList": [{"date": "2026-03-08", "time": 17, "parkid": 39, "id": "G317", "parkname": "G3", "timeStr": "17:00-18:00", "price": 120}, {"date": "2026-03-08", "time": 18, "parkid": 39, "id": "G318", "parkname": "G3", "timeStr": "18:00-19:00", "price": 120}], "priceResponse": null, "orderStateResponse": {"respMsg": "成功！", "respCode": 1001}}
+
+===== manual run at 2026-03-08 12:45:12 =====
+12:45:12.461 [INFO] ============================================================
+12:45:12.461 [INFO] Base URL: https://tennis.bjofp.cn
+12:45:12.461 [INFO] User ID: 43592
+12:45:12.461 [INFO] Target date: 2026-03-08
+12:45:12.461 [INFO] Target time: 14:00
+12:45:12.461 [INFO] Court type code: 4
+12:45:12.461 [INFO] Ball code: 1
+12:45:12.461 [INFO] Threads: 3
+12:45:12.462 [INFO] ============================================================
+12:45:12.488 [INFO] NTP offset: +200 ms
+12:45:12.489 [INFO] Using ballcode=1, parktypecode=4
+12:45:12.513 [INFO] NTP offset: +199 ms
+12:45:12.514 [INFO] Open time already reached, starting immediately.
+12:45:12.514 [INFO] Starting booking threads...
+12:45:12.514 [INFO] [T1] Attempt 1/30
+12:45:12.514 [INFO] [T2] Attempt 1/30
+12:45:12.514 [INFO] [T3] Attempt 1/30
+12:45:12.908 [INFO] [T1] Candidate slots: [{"date": "2026-03-08", "time": 17, "parkid": 39, "id": "G317", "parkname": "G3", "timeStr": "17:00-18:00", "price": 120}, {"date": "2026-03-08", "time": 18, "parkid": 39, "id": "G318", "parkname": "G3", "timeStr": "18:00-19:00", "price": 120}]
+12:45:12.985 [INFO] [T2] Candidate slots: [{"date": "2026-03-08", "time": 17, "parkid": 39, "id": "G317", "parkname": "G3", "timeStr": "17:00-18:00", "price": 120}, {"date": "2026-03-08", "time": 18, "parkid": 39, "id": "G318", "parkname": "G3", "timeStr": "18:00-19:00", "price": 120}]
+12:45:12.990 [INFO] [T3] Candidate slots: [{"date": "2026-03-08", "time": 17, "parkid": 39, "id": "G317", "parkname": "G3", "timeStr": "17:00-18:00", "price": 120}, {"date": "2026-03-08", "time": 18, "parkid": 39, "id": "G318", "parkname": "G3", "timeStr": "18:00-19:00", "price": 120}]
+12:45:13.006 [WARNING] [T2] addParkOrder failed: http 403: {"respMsg":"请求太频繁"}
+12:45:13.012 [WARNING] [T3] addParkOrder failed: http 403: {"respMsg":"请求太频繁"}
+12:45:13.211 [INFO] [T2] Attempt 2/30
+12:45:13.214 [INFO] [T3] Attempt 2/30
+12:45:13.351 [INFO] [T1] getParkOrderState success for 2603081480184618222743552
+12:45:13.489 [INFO] [T3] Candidate slots: [{"date": "2026-03-08", "time": 17, "parkid": 39, "id": "G317", "parkname": "G3", "timeStr": "17:00-18:00", "price": 120}, {"date": "2026-03-08", "time": 18, "parkid": 39, "id": "G318", "parkname": "G3", "timeStr": "18:00-19:00", "price": 120}]
+12:45:13.537 [INFO] [T2] Candidate slots: [{"date": "2026-03-08", "time": 17, "parkid": 40, "id": "G417", "parkname": "G4", "timeStr": "17:00-18:00", "price": 120}, {"date": "2026-03-08", "time": 18, "parkid": 40, "id": "G418", "parkname": "G4", "timeStr": "18:00-19:00", "price": 120}]
+12:45:13.544 [WARNING] [T3] addParkOrder failed: http 403: {"respMsg":"请求太频繁"}
+12:45:13.579 [WARNING] [T2] addParkOrder failed: token验证失败
+12:45:13.787 [INFO] Booking succeeded: {"orderNo": "2603081480184618222743552", "parkList": [{"date": "2026-03-08", "time": 17, "parkid": 39, "id": "G317", "parkname": "G3", "timeStr": "17:00-18:00", "price": 120}, {"date": "2026-03-08", "time": 18, "parkid": 39, "id": "G318", "parkname": "G3", "timeStr": "18:00-19:00", "price": 120}], "priceResponse": null, "orderStateResponse": {"respMsg": "成功！", "respCode": 1001}}
+
+===== manual run at 2026-03-08 12:45:50 =====
+12:45:50.883 [INFO] ============================================================
+12:45:50.883 [INFO] Base URL: https://tennis.bjofp.cn
+12:45:50.883 [INFO] User ID: 43592
+12:45:50.883 [INFO] Target date: 2026-03-08
+12:45:50.883 [INFO] Target time: 14:00
+12:45:50.883 [INFO] Court type code: 4
+12:45:50.883 [INFO] Ball code: 1
+12:45:50.883 [INFO] Threads: 3
+12:45:50.883 [INFO] ============================================================
+12:45:50.919 [INFO] NTP offset: +200 ms
+12:45:50.919 [INFO] Using ballcode=1, parktypecode=4
+12:45:50.946 [INFO] NTP offset: +203 ms
+12:45:50.946 [INFO] Open time already reached, starting immediately.
+12:45:50.946 [INFO] Starting booking threads...
+12:45:50.947 [INFO] [T1] Attempt 1/30
+12:45:50.947 [INFO] [T2] Attempt 1/30
+12:45:50.947 [INFO] [T3] Attempt 1/30
+12:45:51.332 [INFO] [T3] Candidate slots: [{"date": "2026-03-08", "time": 17, "parkid": 39, "id": "G317", "parkname": "G3", "timeStr": "17:00-18:00", "price": 120}, {"date": "2026-03-08", "time": 18, "parkid": 39, "id": "G318", "parkname": "G3", "timeStr": "18:00-19:00", "price": 120}]
+12:45:51.384 [INFO] [T1] Candidate slots: [{"date": "2026-03-08", "time": 17, "parkid": 39, "id": "G317", "parkname": "G3", "timeStr": "17:00-18:00", "price": 120}, {"date": "2026-03-08", "time": 18, "parkid": 39, "id": "G318", "parkname": "G3", "timeStr": "18:00-19:00", "price": 120}]
+12:45:51.410 [WARNING] [T1] addParkOrder failed: http 403: {"respMsg":"请求太频繁"}
+12:45:51.414 [INFO] [T2] Candidate slots: [{"date": "2026-03-08", "time": 17, "parkid": 39, "id": "G317", "parkname": "G3", "timeStr": "17:00-18:00", "price": 120}, {"date": "2026-03-08", "time": 18, "parkid": 39, "id": "G318", "parkname": "G3", "timeStr": "18:00-19:00", "price": 120}]
+12:45:51.436 [WARNING] [T2] addParkOrder failed: http 403: {"respMsg":"请求太频繁"}
+12:45:51.612 [INFO] [T1] Attempt 2/30
+12:45:51.641 [INFO] [T2] Attempt 2/30
+12:45:51.796 [INFO] [T3] getParkOrderState success for 2603081480184779376291840
+12:45:51.878 [INFO] [T1] Candidate slots: [{"date": "2026-03-08", "time": 17, "parkid": 39, "id": "G317", "parkname": "G3", "timeStr": "17:00-18:00", "price": 120}, {"date": "2026-03-08", "time": 18, "parkid": 39, "id": "G318", "parkname": "G3", "timeStr": "18:00-19:00", "price": 120}]
+12:45:51.902 [WARNING] [T1] addParkOrder failed: http 403: {"respMsg":"请求太频繁"}
+12:45:51.927 [INFO] [T2] Candidate slots: [{"date": "2026-03-08", "time": 17, "parkid": 39, "id": "G317", "parkname": "G3", "timeStr": "17:00-18:00", "price": 120}, {"date": "2026-03-08", "time": 18, "parkid": 39, "id": "G318", "parkname": "G3", "timeStr": "18:00-19:00", "price": 120}]
+12:45:51.950 [WARNING] [T2] addParkOrder failed: http 403: {"respMsg":"请求太频繁"}
+12:45:52.154 [INFO] Booking succeeded: {"orderNo": "2603081480184779376291840", "parkList": [{"date": "2026-03-08", "time": 17, "parkid": 39, "id": "G317", "parkname": "G3", "timeStr": "17:00-18:00", "price": 120}, {"date": "2026-03-08", "time": 18, "parkid": 39, "id": "G318", "parkname": "G3", "timeStr": "18:00-19:00", "price": 120}], "priceResponse": null, "orderStateResponse": {"respMsg": "成功！", "respCode": 1001}}
+
+===== manual run at 2026-03-08 12:46:13 =====
+12:46:13.360 [INFO] ============================================================
+12:46:13.360 [INFO] Base URL: https://tennis.bjofp.cn
+12:46:13.360 [INFO] User ID: 43592
+12:46:13.360 [INFO] Target date: 2026-03-08
+12:46:13.360 [INFO] Target time: 14:00
+12:46:13.360 [INFO] Court type code: 6
+12:46:13.360 [INFO] Ball code: 1
+12:46:13.360 [INFO] Threads: 3
+12:46:13.360 [INFO] ============================================================
+12:46:13.390 [INFO] NTP offset: +201 ms
+12:46:13.390 [INFO] Using ballcode=1, parktypecode=6
+12:46:13.413 [INFO] NTP offset: +203 ms
+12:46:13.413 [INFO] Open time already reached, starting immediately.
+12:46:13.413 [INFO] Starting booking threads...
+12:46:13.414 [INFO] [T1] Attempt 1/30
+12:46:13.414 [INFO] [T2] Attempt 1/30
+12:46:13.414 [INFO] [T3] Attempt 1/30
+12:46:13.767 [INFO] [T3] No matching slots currently available.
+12:46:13.817 [INFO] [T1] No matching slots currently available.
+12:46:13.839 [INFO] [T2] No matching slots currently available.
+12:46:13.972 [INFO] [T3] Attempt 2/30
+12:46:14.022 [INFO] [T1] Attempt 2/30
+12:46:14.044 [INFO] [T2] Attempt 2/30
+12:46:14.211 [INFO] [T3] No matching slots currently available.
+12:46:14.285 [INFO] [T1] No matching slots currently available.
+12:46:14.312 [INFO] [T2] No matching slots currently available.
+12:46:14.416 [INFO] [T3] Attempt 3/30
+12:46:14.490 [INFO] [T1] Attempt 3/30
+12:46:14.515 [INFO] [T2] Attempt 3/30
+12:46:14.648 [INFO] [T3] No matching slots currently available.
+12:46:14.733 [INFO] [T1] No matching slots currently available.
+12:46:14.785 [INFO] [T2] No matching slots currently available.
+12:46:14.851 [INFO] [T3] Attempt 4/30
+12:46:14.938 [INFO] [T1] Attempt 4/30
+12:46:14.986 [INFO] [T2] Attempt 4/30
+12:46:15.087 [INFO] [T3] No matching slots currently available.
+12:46:15.202 [INFO] [T1] No matching slots currently available.
+12:46:15.234 [INFO] [T2] No matching slots currently available.
+12:46:15.291 [INFO] [T3] Attempt 5/30
+12:46:15.405 [INFO] [T1] Attempt 5/30
+12:46:15.437 [INFO] [T2] Attempt 5/30
+12:46:15.543 [INFO] [T3] No matching slots currently available.
+12:46:15.653 [INFO] [T1] No matching slots currently available.
+12:46:15.715 [INFO] [T2] No matching slots currently available.
+12:46:15.744 [INFO] [T3] Attempt 6/30
+12:46:15.858 [INFO] [T1] Attempt 6/30
+12:46:15.920 [INFO] [T2] Attempt 6/30
+12:46:15.979 [INFO] [T3] No matching slots currently available.
+12:46:16.091 [INFO] [T1] No matching slots currently available.
+12:46:16.150 [INFO] [T2] No matching slots currently available.
+12:46:16.183 [INFO] [T3] Attempt 7/30
+12:46:16.297 [INFO] [T1] Attempt 7/30
+12:46:16.352 [INFO] [T2] Attempt 7/30
+12:46:16.402 [INFO] [T3] No matching slots currently available.
+12:46:16.534 [INFO] [T1] No matching slots currently available.
+12:46:16.607 [INFO] [T3] Attempt 8/30
+12:46:16.737 [INFO] [T2] No matching slots currently available.
+12:46:16.738 [INFO] [T1] Attempt 8/30
+12:46:16.853 [INFO] [T3] No matching slots currently available.
+12:46:16.941 [INFO] [T2] Attempt 8/30
+12:46:16.982 [INFO] [T1] No matching slots currently available.
+12:46:17.058 [INFO] [T3] Attempt 9/30
+12:46:17.186 [INFO] [T1] Attempt 9/30
+12:46:17.225 [INFO] [T2] No matching slots currently available.
+12:46:17.307 [INFO] [T3] No matching slots currently available.
+12:46:17.430 [INFO] [T2] Attempt 9/30
+12:46:17.431 [INFO] [T1] No matching slots currently available.
+12:46:17.507 [INFO] [T3] Attempt 10/30
+12:46:17.633 [INFO] [T1] Attempt 10/30
+12:46:17.692 [INFO] [T2] No matching slots currently available.
+12:46:17.727 [INFO] [T3] No matching slots currently available.
+12:46:17.888 [INFO] [T1] No matching slots currently available.
+12:46:17.893 [INFO] [T2] Attempt 10/30
+12:46:17.931 [INFO] [T3] Attempt 11/30
+12:46:18.089 [INFO] [T1] Attempt 11/30
+12:46:18.118 [INFO] [T2] No matching slots currently available.
+12:46:18.176 [INFO] [T3] No matching slots currently available.
+12:46:18.321 [INFO] [T2] Attempt 11/30
+12:46:18.364 [INFO] [T1] No matching slots currently available.
+12:46:18.381 [INFO] [T3] Attempt 12/30
+12:46:18.567 [INFO] [T1] Attempt 12/30
+12:46:18.607 [INFO] [T2] No matching slots currently available.
+12:46:18.661 [INFO] [T3] No matching slots currently available.
+12:46:18.812 [INFO] [T2] Attempt 12/30
+12:46:18.826 [INFO] [T1] No matching slots currently available.
+12:46:18.866 [INFO] [T3] Attempt 13/30
+12:46:19.029 [INFO] [T1] Attempt 13/30
+12:46:19.056 [INFO] [T2] No matching slots currently available.
+12:46:19.098 [INFO] [T3] No matching slots currently available.
+12:46:19.258 [INFO] [T2] Attempt 13/30
+12:46:19.303 [INFO] [T3] Attempt 14/30
+12:46:19.307 [INFO] [T1] No matching slots currently available.
+12:46:19.498 [INFO] [T2] No matching slots currently available.
+12:46:19.509 [INFO] [T1] Attempt 14/30
+12:46:19.555 [INFO] [T3] No matching slots currently available.
+12:46:19.703 [INFO] [T2] Attempt 14/30
+12:46:19.757 [INFO] [T1] No matching slots currently available.
+12:46:19.759 [INFO] [T3] Attempt 15/30
+12:46:19.937 [INFO] [T2] No matching slots currently available.
+12:46:19.960 [INFO] [T1] Attempt 15/30
+12:46:20.018 [INFO] [T3] No matching slots currently available.
+12:46:20.142 [INFO] [T2] Attempt 15/30
+12:46:20.194 [INFO] [T1] No matching slots currently available.
+12:46:20.221 [INFO] [T3] Attempt 16/30
+12:46:20.384 [INFO] [T2] No matching slots currently available.
+12:46:20.399 [INFO] [T1] Attempt 16/30
+12:46:20.456 [INFO] [T3] No matching slots currently available.
+12:46:20.587 [INFO] [T2] Attempt 16/30
+12:46:20.661 [INFO] [T3] Attempt 17/30
+12:46:20.664 [INFO] [T1] No matching slots currently available.
+12:46:20.835 [INFO] [T2] No matching slots currently available.
+12:46:20.866 [INFO] [T1] Attempt 17/30
+12:46:20.911 [INFO] [T3] No matching slots currently available.
+12:46:21.036 [INFO] [T2] Attempt 17/30
+12:46:21.101 [INFO] [T1] No matching slots currently available.
+12:46:21.116 [INFO] [T3] Attempt 18/30
+12:46:21.275 [INFO] [T2] No matching slots currently available.
+12:46:21.306 [INFO] [T1] Attempt 18/30
+12:46:21.367 [INFO] [T3] No matching slots currently available.
+12:46:21.480 [INFO] [T2] Attempt 18/30
+12:46:21.537 [INFO] [T1] No matching slots currently available.
+12:46:21.572 [INFO] [T3] Attempt 19/30
+12:46:21.723 [INFO] [T2] No matching slots currently available.
+12:46:21.739 [INFO] [T1] Attempt 19/30
+12:46:21.818 [INFO] [T3] No matching slots currently available.
+12:46:21.927 [INFO] [T2] Attempt 19/30
+12:46:21.992 [INFO] [T1] No matching slots currently available.
+12:46:22.019 [INFO] [T3] Attempt 20/30
+12:46:22.197 [INFO] [T2] No matching slots currently available.
+12:46:22.197 [INFO] [T1] Attempt 20/30
+12:46:22.312 [INFO] [T3] No matching slots currently available.
+12:46:22.403 [INFO] [T2] Attempt 20/30
+12:46:22.433 [INFO] [T1] No matching slots currently available.
+12:46:22.515 [INFO] [T3] Attempt 21/30
+12:46:22.638 [INFO] [T1] Attempt 21/30
+12:46:22.667 [INFO] [T2] No matching slots currently available.
+12:46:22.755 [INFO] [T3] No matching slots currently available.
+12:46:22.868 [INFO] [T2] Attempt 21/30
+12:46:22.897 [INFO] [T1] No matching slots currently available.
+12:46:22.958 [INFO] [T3] Attempt 22/30
+12:46:23.102 [INFO] [T1] Attempt 22/30
+12:46:23.119 [INFO] [T2] No matching slots currently available.
+12:46:23.223 [INFO] [T3] No matching slots currently available.
+12:46:23.324 [INFO] [T2] Attempt 22/30
+12:46:23.353 [INFO] [T1] No matching slots currently available.
+12:46:23.424 [INFO] [T3] Attempt 23/30
+12:46:23.558 [INFO] [T1] Attempt 23/30
+12:46:23.592 [INFO] [T2] No matching slots currently available.
+12:46:23.647 [INFO] [T3] No matching slots currently available.
+12:46:23.795 [INFO] [T2] Attempt 23/30
+12:46:23.813 [INFO] [T1] No matching slots currently available.
+12:46:23.851 [INFO] [T3] Attempt 24/30
+12:46:24.015 [INFO] [T1] Attempt 24/30
+12:46:24.046 [INFO] [T2] No matching slots currently available.
+12:46:24.100 [INFO] [T3] No matching slots currently available.
+12:46:24.251 [INFO] [T2] Attempt 24/30
+12:46:24.271 [INFO] [T1] No matching slots currently available.
+12:46:24.306 [INFO] [T3] Attempt 25/30
+12:46:24.477 [INFO] [T1] Attempt 25/30
+12:46:24.523 [INFO] [T2] No matching slots currently available.
+12:46:24.556 [INFO] [T3] No matching slots currently available.
+12:46:24.720 [INFO] [T1] No matching slots currently available.
+12:46:24.729 [INFO] [T2] Attempt 25/30
+12:46:24.759 [INFO] [T3] Attempt 26/30
+12:46:24.926 [INFO] [T1] Attempt 26/30
+12:46:25.023 [INFO] [T3] No matching slots currently available.
+12:46:25.023 [INFO] [T2] No matching slots currently available.
+12:46:25.153 [INFO] [T1] No matching slots currently available.
+12:46:25.225 [INFO] [T3] Attempt 27/30
+12:46:25.225 [INFO] [T2] Attempt 26/30
+12:46:25.353 [INFO] [T1] Attempt 27/30
+12:46:25.482 [INFO] [T2] No matching slots currently available.
+12:46:25.510 [INFO] [T3] No matching slots currently available.
+12:46:25.571 [INFO] [T1] No matching slots currently available.
+12:46:25.684 [INFO] [T2] Attempt 27/30
+12:46:25.713 [INFO] [T3] Attempt 28/30
+12:46:25.777 [INFO] [T1] Attempt 28/30
+12:46:25.909 [INFO] [T2] No matching slots currently available.
+12:46:25.948 [INFO] [T3] No matching slots currently available.
+12:46:26.010 [INFO] [T1] No matching slots currently available.
+12:46:26.113 [INFO] [T2] Attempt 28/30
+12:46:26.149 [INFO] [T3] Attempt 29/30
+12:46:26.211 [INFO] [T1] Attempt 29/30
+12:46:26.333 [INFO] [T2] No matching slots currently available.
+12:46:26.383 [INFO] [T3] No matching slots currently available.
+12:46:26.445 [INFO] [T1] No matching slots currently available.
+12:46:26.533 [INFO] [T2] Attempt 29/30
+12:46:26.587 [INFO] [T3] Attempt 30/30
+12:46:26.650 [INFO] [T1] Attempt 30/30
+12:46:26.777 [INFO] [T2] No matching slots currently available.
+12:46:26.819 [INFO] [T3] No matching slots currently available.
+12:46:26.916 [INFO] [T1] No matching slots currently available.
+12:46:26.982 [INFO] [T2] Attempt 30/30
+12:46:27.226 [INFO] [T2] No matching slots currently available.
+12:46:27.432 [INFO] Booking did not succeed within retry limits.
+
+===== manual run at 2026-03-08 12:46:56 =====
+12:46:56.538 [INFO] ============================================================
+12:46:56.538 [INFO] Base URL: https://tennis.bjofp.cn
+12:46:56.538 [INFO] User ID: 43592
+12:46:56.538 [INFO] Target date: 2026-03-08
+12:46:56.538 [INFO] Target time: 14:00
+12:46:56.538 [INFO] Court type code: 4
+12:46:56.538 [INFO] Ball code: 1
+12:46:56.538 [INFO] Threads: 3
+12:46:56.538 [INFO] ============================================================
+12:46:56.586 [INFO] NTP offset: +210 ms
+12:46:56.586 [INFO] Using ballcode=1, parktypecode=4
+12:46:56.620 [INFO] NTP offset: +207 ms
+12:46:56.620 [INFO] Open time already reached, starting immediately.
+12:46:56.620 [INFO] Starting booking threads...
+12:46:56.621 [INFO] [T1] Attempt 1/30
+12:46:56.621 [INFO] [T2] Attempt 1/30
+12:46:56.621 [INFO] [T3] Attempt 1/30
+12:46:57.044 [INFO] [T2] Candidate slots: [{"date": "2026-03-08", "time": 17, "parkid": 39, "id": "G317", "parkname": "G3", "timeStr": "17:00-18:00", "price": 120}, {"date": "2026-03-08", "time": 18, "parkid": 39, "id": "G318", "parkname": "G3", "timeStr": "18:00-19:00", "price": 120}]
+12:46:57.082 [INFO] [T3] Candidate slots: [{"date": "2026-03-08", "time": 17, "parkid": 39, "id": "G317", "parkname": "G3", "timeStr": "17:00-18:00", "price": 120}, {"date": "2026-03-08", "time": 18, "parkid": 39, "id": "G318", "parkname": "G3", "timeStr": "18:00-19:00", "price": 120}]
+12:46:57.105 [WARNING] [T3] addParkOrder failed: http 403: {"respMsg":"请求太频繁"}
+12:46:57.112 [INFO] [T1] Candidate slots: [{"date": "2026-03-08", "time": 17, "parkid": 39, "id": "G317", "parkname": "G3", "timeStr": "17:00-18:00", "price": 120}, {"date": "2026-03-08", "time": 18, "parkid": 39, "id": "G318", "parkname": "G3", "timeStr": "18:00-19:00", "price": 120}]
+12:46:57.144 [WARNING] [T1] addParkOrder failed: http 403: {"respMsg":"请求太频繁"}
+12:46:57.309 [INFO] [T3] Attempt 2/30
+12:46:57.348 [INFO] [T1] Attempt 2/30
+12:46:57.492 [INFO] [T2] getParkOrderState success for 2603081480185055021756416
+12:46:57.572 [INFO] [T3] Candidate slots: [{"date": "2026-03-08", "time": 17, "parkid": 39, "id": "G317", "parkname": "G3", "timeStr": "17:00-18:00", "price": 120}, {"date": "2026-03-08", "time": 18, "parkid": 39, "id": "G318", "parkname": "G3", "timeStr": "18:00-19:00", "price": 120}]
+12:46:57.596 [WARNING] [T3] addParkOrder failed: http 403: {"respMsg":"请求太频繁"}
+12:46:57.622 [INFO] [T1] Candidate slots: [{"date": "2026-03-08", "time": 17, "parkid": 39, "id": "G317", "parkname": "G3", "timeStr": "17:00-18:00", "price": 120}, {"date": "2026-03-08", "time": 18, "parkid": 39, "id": "G318", "parkname": "G3", "timeStr": "18:00-19:00", "price": 120}]
+12:46:57.643 [WARNING] [T1] addParkOrder failed: http 403: {"respMsg":"请求太频繁"}
+12:46:57.845 [INFO] Booking succeeded: {"orderNo": "2603081480185055021756416", "parkList": [{"date": "2026-03-08", "time": 17, "parkid": 39, "id": "G317", "parkname": "G3", "timeStr": "17:00-18:00", "price": 120}, {"date": "2026-03-08", "time": 18, "parkid": 39, "id": "G318", "parkname": "G3", "timeStr": "18:00-19:00", "price": 120}], "priceResponse": null, "orderStateResponse": {"respMsg": "成功！", "respCode": 1001}}
+
+===== manual run at 2026-03-08 13:14:16 =====
+13:14:16.794 [INFO] ============================================================
+13:14:16.794 [INFO] Base URL: https://tennis.bjofp.cn
+13:14:16.794 [INFO] User ID: 43592
+13:14:16.794 [INFO] Target date: 2026-03-08
+13:14:16.794 [INFO] Target time: 14:00
+13:14:16.794 [INFO] Court type code: 3
+13:14:16.794 [INFO] Ball code: 1
+13:14:16.794 [INFO] Threads: 3
+13:14:16.794 [INFO] ============================================================
+13:14:16.857 [INFO] NTP offset: +262 ms
+13:14:16.857 [INFO] Using ballcode=1, parktypecode=3
+13:14:16.888 [INFO] NTP offset: +246 ms
+13:14:16.888 [INFO] Open time already reached, starting immediately.
+13:14:16.888 [INFO] Starting booking threads...
+13:14:16.888 [INFO] [T1] Attempt 1/30
+13:14:16.889 [INFO] [T2] Attempt 1/30
+13:14:16.889 [INFO] [T3] Attempt 1/30
+13:14:17.302 [INFO] [T1] Candidate slots: [{"date": "2026-03-08", "time": 17, "parkid": 66, "id": "K117", "parkname": "K1", "timeStr": "17:00-18:00", "price": 200}, {"date": "2026-03-08", "time": 18, "parkid": 66, "id": "K118", "parkname": "K1", "timeStr": "18:00-19:00", "price": 200}]
+13:14:17.346 [INFO] [T3] Candidate slots: [{"date": "2026-03-08", "time": 17, "parkid": 66, "id": "K117", "parkname": "K1", "timeStr": "17:00-18:00", "price": 200}, {"date": "2026-03-08", "time": 18, "parkid": 66, "id": "K118", "parkname": "K1", "timeStr": "18:00-19:00", "price": 200}]
+13:14:17.362 [INFO] [T2] Candidate slots: [{"date": "2026-03-08", "time": 17, "parkid": 66, "id": "K117", "parkname": "K1", "timeStr": "17:00-18:00", "price": 200}, {"date": "2026-03-08", "time": 18, "parkid": 66, "id": "K118", "parkname": "K1", "timeStr": "18:00-19:00", "price": 200}]
+13:14:17.371 [WARNING] [T3] addParkOrder failed: http 403: {"respMsg":"请求太频繁"}
+13:14:17.388 [WARNING] [T2] addParkOrder failed: http 403: {"respMsg":"请求太频繁"}
+13:14:17.572 [INFO] [T3] Attempt 2/30
+13:14:17.590 [INFO] [T2] Attempt 2/30
+13:14:17.729 [INFO] [T1] getParkOrderState success for 2603081480191934879887360
+13:14:17.846 [INFO] [T3] Candidate slots: [{"date": "2026-03-08", "time": 17, "parkid": 66, "id": "K117", "parkname": "K1", "timeStr": "17:00-18:00", "price": 200}, {"date": "2026-03-08", "time": 18, "parkid": 66, "id": "K118", "parkname": "K1", "timeStr": "18:00-19:00", "price": 200}]
+13:14:17.871 [WARNING] [T3] addParkOrder failed: http 403: {"respMsg":"请求太频繁"}
+13:14:17.887 [INFO] [T2] Candidate slots: [{"date": "2026-03-08", "time": 17, "parkid": 66, "id": "K117", "parkname": "K1", "timeStr": "17:00-18:00", "price": 200}, {"date": "2026-03-08", "time": 18, "parkid": 66, "id": "K118", "parkname": "K1", "timeStr": "18:00-19:00", "price": 200}]
+13:14:17.909 [WARNING] [T2] addParkOrder failed: http 403: {"respMsg":"请求太频繁"}
+13:14:18.113 [INFO] Booking succeeded: {"orderNo": "2603081480191934879887360", "parkList": [{"date": "2026-03-08", "time": 17, "parkid": 66, "id": "K117", "parkname": "K1", "timeStr": "17:00-18:00", "price": 200}, {"date": "2026-03-08", "time": 18, "parkid": 66, "id": "K118", "parkname": "K1", "timeStr": "18:00-19:00", "price": 200}], "priceResponse": null, "orderStateResponse": {"respMsg": "成功！", "respCode": 1001}}
+
+===== manual run at 2026-03-08 13:14:34 =====
+13:14:34.635 [INFO] ============================================================
+13:14:34.636 [INFO] Base URL: https://tennis.bjofp.cn
+13:14:34.636 [INFO] User ID: 43592
+13:14:34.636 [INFO] Target date: 2026-03-08
+13:14:34.636 [INFO] Target time: 14:00
+13:14:34.636 [INFO] Court type code: 13
+13:14:34.636 [INFO] Ball code: 1
+13:14:34.636 [INFO] Threads: 3
+13:14:34.636 [INFO] ============================================================
+13:14:34.664 [INFO] NTP offset: +248 ms
+13:14:34.664 [INFO] Using ballcode=1, parktypecode=13
+13:14:34.692 [INFO] NTP offset: +249 ms
+13:14:34.692 [INFO] Open time already reached, starting immediately.
+13:14:34.692 [INFO] Starting booking threads...
+13:14:34.692 [INFO] [T1] Attempt 1/30
+13:14:34.692 [INFO] [T2] Attempt 1/30
+13:14:34.692 [INFO] [T3] Attempt 1/30
+13:14:35.084 [INFO] [T1] Candidate slots: [{"date": "2026-03-08", "time": 21, "parkid": 16, "id": "A321", "parkname": "A3", "timeStr": "21:00-22:00", "price": 400}, {"date": "2026-03-08", "time": 22, "parkid": 16, "id": "A322", "parkname": "A3", "timeStr": "22:00-23:00", "price": 400}]
+13:14:35.150 [INFO] [T2] Candidate slots: [{"date": "2026-03-08", "time": 21, "parkid": 16, "id": "A321", "parkname": "A3", "timeStr": "21:00-22:00", "price": 400}, {"date": "2026-03-08", "time": 22, "parkid": 16, "id": "A322", "parkname": "A3", "timeStr": "22:00-23:00", "price": 400}]
+13:14:35.153 [INFO] [T3] Candidate slots: [{"date": "2026-03-08", "time": 21, "parkid": 16, "id": "A321", "parkname": "A3", "timeStr": "21:00-22:00", "price": 400}, {"date": "2026-03-08", "time": 22, "parkid": 16, "id": "A322", "parkname": "A3", "timeStr": "22:00-23:00", "price": 400}]
+13:14:35.174 [WARNING] [T3] addParkOrder failed: http 403: {"respMsg":"请求太频繁"}
+13:14:35.179 [WARNING] [T2] addParkOrder failed: http 403: {"respMsg":"请求太频繁"}
+13:14:35.375 [INFO] [T3] Attempt 2/30
+13:14:35.384 [INFO] [T2] Attempt 2/30
+13:14:35.538 [INFO] [T1] getParkOrderState success for 2603081480192009546887168
+13:14:35.661 [INFO] [T3] Candidate slots: [{"date": "2026-03-08", "time": 21, "parkid": 16, "id": "A321", "parkname": "A3", "timeStr": "21:00-22:00", "price": 400}, {"date": "2026-03-08", "time": 22, "parkid": 16, "id": "A322", "parkname": "A3", "timeStr": "22:00-23:00", "price": 400}]
+13:14:35.677 [INFO] [T2] Candidate slots: [{"date": "2026-03-08", "time": 21, "parkid": 16, "id": "A321", "parkname": "A3", "timeStr": "21:00-22:00", "price": 400}, {"date": "2026-03-08", "time": 22, "parkid": 16, "id": "A322", "parkname": "A3", "timeStr": "22:00-23:00", "price": 400}]
+13:14:35.691 [WARNING] [T3] addParkOrder failed: http 403: {"respMsg":"请求太频繁"}
+13:14:35.706 [WARNING] [T2] addParkOrder failed: http 403: {"respMsg":"请求太频繁"}
+13:14:35.908 [INFO] Booking succeeded: {"orderNo": "2603081480192009546887168", "parkList": [{"date": "2026-03-08", "time": 21, "parkid": 16, "id": "A321", "parkname": "A3", "timeStr": "21:00-22:00", "price": 400}, {"date": "2026-03-08", "time": 22, "parkid": 16, "id": "A322", "parkname": "A3", "timeStr": "22:00-23:00", "price": 400}], "priceResponse": null, "orderStateResponse": {"respMsg": "成功！", "respCode": 1001}}

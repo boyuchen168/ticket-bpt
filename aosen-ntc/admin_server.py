@@ -36,28 +36,28 @@ _mongo_db: Any | None = None
 
 COURT_TYPES = [
     {
-        "value": "4",
+        "value": "3",
         "label": "室外硬地",
         "ballcode": "1",
         "sport": "网球",
         "venue": "K场 (K1-K18)",
     },
     {
-        "value": "5",
+        "value": "4",
         "label": "室外草地",
         "ballcode": "1",
         "sport": "网球",
         "venue": "G场 (G3-G5)",
     },
     {
-        "value": "6",
+        "value": "13",
         "label": "室内硬地",
         "ballcode": "1",
         "sport": "网球",
         "venue": "A场+B场 (各6个)",
     },
     {
-        "value": "7",
+        "value": "21",
         "label": "室内红土",
         "ballcode": "1",
         "sport": "网球",
@@ -86,13 +86,13 @@ COURT_TYPES = [
     },
 ]
 
-COURT_TYPE_COMMENT_BLOCK = """#Home Info / Court Types:
+COURT_TYPE_COMMENT_BLOCK = """#Home Info / Court Types (parktypecode = id传给API的parktypeinfo参数):
 #ballcode=1 (网球), parktypecodes:
-#3 → parktypecode=4, "室外硬地", 场馆: K场 (18个场地: K1-K18)
-#4 → parktypecode=5, "室外草地", 场馆: G场 (5个场地: G3-G5)
-#13 → parktypecode=6, "室内硬地", 场馆: A场+B场 (各6个)
-#21 → parktypecode=7, "室内红土", 场馆: H场 (2个)
-#27 → parktypecode=27, "网球墙", 场馆: 网球墙 (4个)
+#parktypecode=3, "室外硬地", 场馆: K场 (18个场地: K1-K18)
+#parktypecode=4, "室外草地", 场馆: G场 (5个场地: G3-G5)
+#parktypecode=13, "室内硬地", 场馆: A场+B场 (各6个)
+#parktypecode=21, "室内红土", 场馆: H场 (2个)
+#parktypecode=27, "网球墙", 场馆: 网球墙 (4个)
 #ballcode=2 (羽毛球), parktypecode=9, 场馆: 羽毛球馆 (Y1-Y5)
 #ballcode=3 (匹克球), parktypecode=28, 场馆: 匹克球 (P1-P3)
 """
@@ -197,6 +197,67 @@ def upsert_user_cookie(payload: Dict[str, Any]) -> None:
         db["user_cookies"].update_one({"mobile": mobile}, {"$set": doc}, upsert=True)
     except PyMongoError as exc:
         app.logger.warning("Save user cookie to MongoDB failed: %s", exc)
+
+
+def extract_auth_payload(auth: Dict[str, Any]) -> Dict[str, str]:
+    return {
+        "mobile": str(auth.get("mobile", "")).strip(),
+        "userid": str(auth.get("userid", "")).strip(),
+        "bnglokbj": str(auth.get("bnglokbj", "")).strip(),
+        "csc": str(auth.get("csc", "")).strip(),
+        "cdc": str(auth.get("cdc", "")).strip(),
+        "openId": str(auth.get("openId", "")).strip(),
+        "maopenId": str(auth.get("maopenId", "")).strip(),
+        "unionId": str(auth.get("unionId", "")).strip(),
+    }
+
+
+def list_user_cookies() -> List[Dict[str, Any]]:
+    db = get_mongo_db()
+    if db is None:
+        return []
+    try:
+        docs = db["user_cookies"].find({}, {"_id": 0, "mobile": 1, "userid": 1, "updated_at": 1})
+    except PyMongoError as exc:
+        app.logger.warning("List user cookies from MongoDB failed: %s", exc)
+        return []
+
+    users: List[Dict[str, Any]] = []
+    for item in docs:
+        if not isinstance(item, dict):
+            continue
+        mobile = str(item.get("mobile", "")).strip()
+        if not mobile:
+            continue
+        user = {
+            "mobile": mobile,
+            "userid": str(item.get("userid", "")).strip(),
+            "updated_at": "",
+        }
+        updated_at = item.get("updated_at")
+        if isinstance(updated_at, datetime):
+            user["updated_at"] = updated_at.isoformat()
+        elif updated_at:
+            user["updated_at"] = str(updated_at)
+        users.append(user)
+    return users
+
+
+def get_user_cookie_by_mobile(mobile: str) -> Dict[str, str] | None:
+    db = get_mongo_db()
+    if db is None:
+        return None
+    try:
+        doc = db["user_cookies"].find_one({"mobile": mobile}, {"_id": 0})
+    except PyMongoError as exc:
+        app.logger.warning("Query user cookie from MongoDB failed: %s", exc)
+        return None
+    if not isinstance(doc, dict):
+        return None
+    auth = extract_auth_payload(doc)
+    if not auth["mobile"]:
+        return None
+    return auth
 
 
 def build_login_client() -> TennisClient:
@@ -363,6 +424,54 @@ def api_get_config():
             booking_info = None
 
     return jsonify({"config": cfg, "booking_info": booking_info})
+
+
+@app.get("/api/users")
+def api_users():
+    cfg = load_config()
+    auth = cfg.get("auth", {}) if isinstance(cfg.get("auth"), dict) else {}
+    active_mobile = str(auth.get("mobile", "")).strip()
+
+    users = list_user_cookies()
+    # Fallback when MongoDB is unavailable: at least expose current config user.
+    if active_mobile and not any(item.get("mobile") == active_mobile for item in users):
+        users.insert(
+            0,
+            {
+                "mobile": active_mobile,
+                "userid": str(auth.get("userid", "")).strip(),
+                "updated_at": "",
+            },
+        )
+    return jsonify({"users": users, "active_mobile": active_mobile})
+
+
+@app.post("/api/users/switch")
+def api_switch_user():
+    data = request.get_json(silent=True) or {}
+    mobile = str(data.get("mobile", "")).strip()
+    if not mobile:
+        return jsonify({"ok": False, "error": "mobile is required"}), 400
+
+    auth_payload = get_user_cookie_by_mobile(mobile)
+    if auth_payload is None:
+        return jsonify({"ok": False, "error": "未找到该用户凭证，请先登录该手机号"}), 404
+
+    missing = [k for k in ("userid", "bnglokbj", "csc", "cdc") if not auth_payload[k]]
+    if missing:
+        return jsonify({"ok": False, "error": f"用户凭证缺少关键字段: {', '.join(missing)}"}), 400
+
+    cfg = load_config()
+    update_cfg_section(cfg, "auth", auth_payload)
+    save_config(cfg)
+
+    return jsonify(
+        {
+            "ok": True,
+            "message": f"已切换到用户: {mobile}",
+            "auth": {"mobile": auth_payload["mobile"], "userid": auth_payload["userid"]},
+        }
+    )
 
 
 @app.post("/api/auth/send-code")

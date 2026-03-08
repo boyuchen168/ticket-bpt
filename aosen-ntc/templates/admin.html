@@ -13,6 +13,12 @@
         <h1 class="text-xl font-semibold">Tennis Booking Admin</h1>
         <p class="text-sm text-slate-500">配置 parktype / 预约日期 / 自动 cron 抢票</p>
       </div>
+      <div class="flex items-center gap-2 min-w-[280px]">
+        <label for="userSelect" class="text-sm text-slate-600 whitespace-nowrap">当前用户</label>
+        <select id="userSelect" class="w-full border rounded-lg px-3 py-2 text-sm">
+          <option value="">加载中...</option>
+        </select>
+      </div>
       <div class="flex gap-2 items-center">
         <a href="/login" class="px-3 py-2 rounded-lg border border-slate-300 text-slate-700 text-sm hover:bg-slate-50">重新登录</a>
         <button id="saveBtn" class="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm">保存配置</button>
@@ -143,6 +149,7 @@
   <script>
     const courtTypes = [];
     let noticeTimer = null;
+    let switchingUser = false;
 
     function el(id) { return document.getElementById(id); }
     function toHHMMSS(v) { return v && v.length === 5 ? v + ":00" : (v || "00:00:00"); }
@@ -228,6 +235,60 @@
       }
     }
 
+    function formatUserLabel(user) {
+      const mobile = user.mobile || "";
+      const userid = user.userid || "";
+      return userid ? `${mobile} (userid: ${userid})` : mobile;
+    }
+
+    async function loadUsers() {
+      const select = el("userSelect");
+      const resp = await fetchJson("/api/users", { cache: "no-store" });
+      const users = Array.isArray(resp.users) ? resp.users : [];
+      const activeMobile = resp.active_mobile || "";
+      select.innerHTML = "";
+
+      if (!users.length) {
+        const option = document.createElement("option");
+        option.value = "";
+        option.textContent = "暂无可选用户，请先登录";
+        select.appendChild(option);
+        select.disabled = true;
+        return;
+      }
+
+      for (const user of users) {
+        const option = document.createElement("option");
+        option.value = user.mobile || "";
+        option.textContent = formatUserLabel(user);
+        select.appendChild(option);
+      }
+
+      if (activeMobile && users.some((item) => item.mobile === activeMobile)) {
+        select.value = activeMobile;
+      } else {
+        select.value = users[0].mobile || "";
+      }
+      select.disabled = false;
+    }
+
+    async function switchUser(mobile) {
+      if (!mobile || switchingUser) return;
+      switchingUser = true;
+      try {
+        const data = await fetchJson("/api/users/switch", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ mobile }),
+        });
+        showNotice(data.message || `已切换用户: ${mobile}`);
+        await loadConfig();
+        await loadUsers();
+      } finally {
+        switchingUser = false;
+      }
+    }
+
     function collectPayload() {
       const preferred = el("preferred_courts").value
         .split(",")
@@ -264,7 +325,7 @@
       const strategy = cfg.strategy || {};
       const notify = cfg.notify || {};
 
-      el("parktypecode").value = String(court.parktypecode || "6");
+      el("parktypecode").value = String(court.parktypecode || "13");
       el("target_date").value = court.target_date || "";
       el("target_time").value = court.target_time || "14:00";
       el("target_time_end").value = court.target_time_end || "18:00";
@@ -397,6 +458,7 @@
     async function init() {
       await loadCourtTypes();
       await loadConfig();
+      await loadUsers();
       await previewCron();
       await refreshCronStatus();
       await refreshLogs();
@@ -420,6 +482,10 @@
         refreshLogs().catch((error) => showNotice(`刷新日志失败: ${error.message || String(error)}`, "error"))
       );
       el("parktypecode").addEventListener("change", updateParktypeDesc);
+      el("userSelect").addEventListener("change", (event) => {
+        const mobile = event.target.value;
+        switchUser(mobile).catch((error) => showNotice(`切换用户失败: ${error.message || String(error)}`, "error"));
+      });
 
       for (const id of ["target_date", "advance_days", "booking_open_time", "buffer_minutes"]) {
         el(id).addEventListener("change", previewCron);
