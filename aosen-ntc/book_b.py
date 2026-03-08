@@ -313,19 +313,13 @@ class BookerB(TennisBooker):
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="tennis.bjofp.cn booking Strategy B script")
-    parser.add_argument(
-        "-c",
-        "--config",
-        default="tennis_config.yaml",
-        help="Path to config yaml (default: tennis_config.yaml)",
-    )
     return parser
 
 
 def main() -> None:
     parser = build_parser()
-    args = parser.parse_args()
-    bot = BookerB(args.config)
+    parser.parse_args()
+    bot = BookerB()
     bot.show_info()
     log.info("Strategy: B (fixed time, parallel per-court, reverse API order)")
     success = bot.run()

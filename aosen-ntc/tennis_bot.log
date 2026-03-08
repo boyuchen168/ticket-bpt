@@ -473,3 +473,232 @@ KeyboardInterrupt
 13:17:10.337 [INFO] [T3] Candidate slots: [{"date": "2026-03-10", "time": 7, "parkid": 14, "id": "A17", "parkname": "A1", "timeStr": "7:00-8:00", "price": 300}, {"date": "2026-03-10", "time": 8, "parkid": 14, "id": "A18", "parkname": "A1", "timeStr": "8:00-9:00", "price": 300}]
 13:17:10.367 [WARNING] [T3] addParkOrder failed: http 403: {"respMsg":"请求太频繁"}
 13:17:10.572 [INFO] Booking succeeded: {"orderNo": "2603081480192658263109632", "parkList": [{"date": "2026-03-10", "time": 7, "parkid": 14, "id": "A17", "parkname": "A1", "timeStr": "7:00-8:00", "price": 300}, {"date": "2026-03-10", "time": 8, "parkid": 14, "id": "A18", "parkname": "A1", "timeStr": "8:00-9:00", "price": 300}], "priceResponse": null, "orderStateResponse": {"respMsg": "成功！", "respCode": 1001}}
+
+===== manual run at 2026-03-08 13:18:26 =====
+13:18:27.014 [INFO] ============================================================
+13:18:27.014 [INFO] Base URL: https://tennis.bjofp.cn
+13:18:27.014 [INFO] User ID: 43592
+13:18:27.014 [INFO] Target date: 2026-03-10
+13:18:27.014 [INFO] Target time: 07:00
+13:18:27.014 [INFO] Court type code: 13
+13:18:27.014 [INFO] Ball code: 1
+13:18:27.014 [INFO] Threads: 3
+13:18:27.014 [INFO] ============================================================
+13:18:27.047 [INFO] NTP offset: +247 ms
+13:18:27.047 [INFO] Using ballcode=1, parktypecode=13
+13:18:27.076 [INFO] NTP offset: +247 ms
+13:18:27.076 [INFO] Open time already reached, starting immediately.
+13:18:27.076 [INFO] Starting booking threads...
+13:18:27.077 [INFO] [T1] Attempt 1/30
+13:18:27.077 [INFO] [T2] Attempt 1/30
+13:18:27.077 [INFO] [T3] Attempt 1/30
+13:18:27.502 [INFO] [T2] Candidate slots: [{"date": "2026-03-10", "time": 7, "parkid": 14, "id": "A17", "parkname": "A1", "timeStr": "7:00-8:00", "price": 300}, {"date": "2026-03-10", "time": 8, "parkid": 14, "id": "A18", "parkname": "A1", "timeStr": "8:00-9:00", "price": 300}]
+13:18:27.503 [INFO] [T3] Candidate slots: [{"date": "2026-03-10", "time": 7, "parkid": 14, "id": "A17", "parkname": "A1", "timeStr": "7:00-8:00", "price": 300}, {"date": "2026-03-10", "time": 8, "parkid": 14, "id": "A18", "parkname": "A1", "timeStr": "8:00-9:00", "price": 300}]
+13:18:27.553 [WARNING] [T2] addParkOrder failed: http 403: {"respMsg":"请求太频繁"}
+13:18:27.554 [INFO] [T1] Candidate slots: [{"date": "2026-03-10", "time": 7, "parkid": 14, "id": "A17", "parkname": "A1", "timeStr": "7:00-8:00", "price": 300}, {"date": "2026-03-10", "time": 8, "parkid": 14, "id": "A18", "parkname": "A1", "timeStr": "8:00-9:00", "price": 300}]
+13:18:27.577 [WARNING] [T1] addParkOrder failed: http 403: {"respMsg":"请求太频繁"}
+13:18:27.757 [INFO] [T2] Attempt 2/30
+13:18:27.777 [INFO] [T1] Attempt 2/30
+13:18:27.991 [INFO] [T3] getParkOrderState success for 2603081480192984571572224
+13:18:28.039 [INFO] [T2] Candidate slots: [{"date": "2026-03-10", "time": 7, "parkid": 14, "id": "A17", "parkname": "A1", "timeStr": "7:00-8:00", "price": 300}, {"date": "2026-03-10", "time": 8, "parkid": 14, "id": "A18", "parkname": "A1", "timeStr": "8:00-9:00", "price": 300}]
+13:18:28.062 [INFO] [T1] Candidate slots: [{"date": "2026-03-10", "time": 7, "parkid": 14, "id": "A17", "parkname": "A1", "timeStr": "7:00-8:00", "price": 300}, {"date": "2026-03-10", "time": 8, "parkid": 14, "id": "A18", "parkname": "A1", "timeStr": "8:00-9:00", "price": 300}]
+13:18:28.080 [WARNING] [T2] addParkOrder failed: http 403: {"respMsg":"请求太频繁"}
+13:18:28.089 [WARNING] [T1] addParkOrder failed: http 403: {"respMsg":"请求太频繁"}
+13:18:28.295 [INFO] Booking succeeded: {"orderNo": "2603081480192984571572224", "parkList": [{"date": "2026-03-10", "time": 7, "parkid": 14, "id": "A17", "parkname": "A1", "timeStr": "7:00-8:00", "price": 300}, {"date": "2026-03-10", "time": 8, "parkid": 14, "id": "A18", "parkname": "A1", "timeStr": "8:00-9:00", "price": 300}], "priceResponse": null, "orderStateResponse": {"respMsg": "成功！", "respCode": 1001}}
+
+===== manual run at 2026-03-08 13:18:41 =====
+13:18:42.079 [INFO] ============================================================
+13:18:42.079 [INFO] Base URL: https://tennis.bjofp.cn
+13:18:42.079 [INFO] User ID: 43592
+13:18:42.079 [INFO] Target date: 2026-03-10
+13:18:42.079 [INFO] Target time: 12:00
+13:18:42.079 [INFO] Court type code: 13
+13:18:42.079 [INFO] Ball code: 1
+13:18:42.079 [INFO] Threads: 3
+13:18:42.079 [INFO] ============================================================
+13:18:42.107 [INFO] NTP offset: +250 ms
+13:18:42.108 [INFO] Using ballcode=1, parktypecode=13
+13:18:42.132 [INFO] NTP offset: +251 ms
+13:18:42.132 [INFO] Open time already reached, starting immediately.
+13:18:42.132 [INFO] Starting booking threads...
+13:18:42.133 [INFO] [T1] Attempt 1/30
+13:18:42.133 [INFO] [T2] Attempt 1/30
+13:18:42.133 [INFO] [T3] Attempt 1/30
+13:18:42.570 [INFO] [T2] No matching slots currently available.
+13:18:42.571 [INFO] [T3] No matching slots currently available.
+13:18:42.585 [INFO] [T1] No matching slots currently available.
+13:18:42.775 [INFO] [T3] Attempt 2/30
+13:18:42.776 [INFO] [T2] Attempt 2/30
+13:18:42.792 [INFO] [T1] Attempt 2/30
+13:18:43.066 [INFO] [T3] No matching slots currently available.
+13:18:43.088 [INFO] [T1] No matching slots currently available.
+13:18:43.105 [INFO] [T2] No matching slots currently available.
+13:18:43.269 [INFO] [T3] Attempt 3/30
+13:18:43.293 [INFO] [T1] Attempt 3/30
+13:18:43.310 [INFO] [T2] Attempt 3/30
+13:18:43.517 [INFO] [T3] No matching slots currently available.
+13:18:43.591 [INFO] [T2] No matching slots currently available.
+13:18:43.606 [INFO] [T1] No matching slots currently available.
+13:18:43.720 [INFO] [T3] Attempt 4/30
+13:18:43.796 [INFO] [T2] Attempt 4/30
+13:18:43.810 [INFO] [T1] Attempt 4/30
+13:18:43.972 [INFO] [T3] No matching slots currently available.
+13:18:44.048 [INFO] [T2] No matching slots currently available.
+13:18:44.097 [INFO] [T1] No matching slots currently available.
+13:18:44.176 [INFO] [T3] Attempt 5/30
+13:18:44.250 [INFO] [T2] Attempt 5/30
+13:18:44.301 [INFO] [T1] Attempt 5/30
+13:18:44.417 [INFO] [T3] No matching slots currently available.
+13:18:44.498 [INFO] [T2] No matching slots currently available.
+13:18:44.553 [INFO] [T1] No matching slots currently available.
+13:18:44.622 [INFO] [T3] Attempt 6/30
+13:18:44.703 [INFO] [T2] Attempt 6/30
+13:18:44.757 [INFO] [T1] Attempt 6/30
+13:18:44.863 [INFO] [T3] No matching slots currently available.
+13:18:44.953 [INFO] [T2] No matching slots currently available.
+13:18:45.020 [INFO] [T1] No matching slots currently available.
+13:18:45.068 [INFO] [T3] Attempt 7/30
+13:18:45.155 [INFO] [T2] Attempt 7/30
+13:18:45.225 [INFO] [T1] Attempt 7/30
+13:18:45.324 [INFO] [T3] No matching slots currently available.
+13:18:45.425 [INFO] [T2] No matching slots currently available.
+13:18:45.480 [INFO] [T1] No matching slots currently available.
+13:18:45.526 [INFO] [T3] Attempt 8/30
+13:18:45.628 [INFO] [T2] Attempt 8/30
+13:18:45.684 [INFO] [T1] Attempt 8/30
+13:18:45.795 [INFO] [T3] No matching slots currently available.
+13:18:45.905 [INFO] [T2] No matching slots currently available.
+13:18:45.951 [INFO] [T1] No matching slots currently available.
+13:18:45.998 [INFO] [T3] Attempt 9/30
+13:18:46.109 [INFO] [T2] Attempt 9/30
+13:18:46.156 [INFO] [T1] Attempt 9/30
+13:18:46.304 [INFO] [T3] No matching slots currently available.
+13:18:46.406 [INFO] [T2] No matching slots currently available.
+13:18:46.411 [INFO] [T1] No matching slots currently available.
+13:18:46.509 [INFO] [T3] Attempt 10/30
+13:18:46.611 [INFO] [T2] Attempt 10/30
+13:18:46.615 [INFO] [T1] Attempt 10/30
+13:18:46.779 [INFO] [T3] No matching slots currently available.
+13:18:46.898 [INFO] [T2] No matching slots currently available.
+13:18:46.914 [INFO] [T1] No matching slots currently available.
+13:18:46.985 [INFO] [T3] Attempt 11/30
+13:18:47.103 [INFO] [T2] Attempt 11/30
+13:18:47.116 [INFO] [T1] Attempt 11/30
+13:18:47.240 [INFO] [T3] No matching slots currently available.
+13:18:47.379 [INFO] [T2] No matching slots currently available.
+13:18:47.405 [INFO] [T1] No matching slots currently available.
+13:18:47.444 [INFO] [T3] Attempt 12/30
+13:18:47.588 [INFO] [T2] Attempt 12/30
+13:18:47.610 [INFO] [T1] Attempt 12/30
+13:18:47.702 [INFO] [T3] No matching slots currently available.
+13:18:47.853 [INFO] [T2] No matching slots currently available.
+13:18:47.902 [INFO] [T1] No matching slots currently available.
+13:18:47.903 [INFO] [T3] Attempt 13/30
+13:18:48.056 [INFO] [T2] Attempt 13/30
+13:18:48.104 [INFO] [T1] Attempt 13/30
+13:18:48.155 [INFO] [T3] No matching slots currently available.
+13:18:48.313 [INFO] [T2] No matching slots currently available.
+13:18:48.356 [INFO] [T3] Attempt 14/30
+13:18:48.376 [INFO] [T1] No matching slots currently available.
+13:18:48.518 [INFO] [T2] Attempt 14/30
+13:18:48.581 [INFO] [T1] Attempt 14/30
+13:18:48.626 [INFO] [T3] No matching slots currently available.
+13:18:48.799 [INFO] [T2] No matching slots currently available.
+13:18:48.831 [INFO] [T3] Attempt 15/30
+13:18:48.866 [INFO] [T1] No matching slots currently available.
+13:18:49.001 [INFO] [T2] Attempt 15/30
+13:18:49.071 [INFO] [T1] Attempt 15/30
+13:18:49.102 [INFO] [T3] No matching slots currently available.
+13:18:49.276 [INFO] [T2] No matching slots currently available.
+13:18:49.307 [INFO] [T3] Attempt 16/30
+13:18:49.343 [INFO] [T1] No matching slots currently available.
+13:18:49.479 [INFO] [T2] Attempt 16/30
+13:18:49.544 [INFO] [T1] Attempt 16/30
+13:18:49.583 [INFO] [T3] No matching slots currently available.
+13:18:49.744 [INFO] [T2] No matching slots currently available.
+13:18:49.788 [INFO] [T3] Attempt 17/30
+13:18:49.852 [INFO] [T1] No matching slots currently available.
+13:18:49.948 [INFO] [T2] Attempt 17/30
+13:18:50.052 [INFO] [T3] No matching slots currently available.
+13:18:50.053 [INFO] [T1] Attempt 17/30
+13:18:50.187 [INFO] [T2] No matching slots currently available.
+13:18:50.256 [INFO] [T3] Attempt 18/30
+13:18:50.312 [INFO] [T1] No matching slots currently available.
+13:18:50.388 [INFO] [T2] Attempt 18/30
+13:18:50.516 [INFO] [T1] Attempt 18/30
+13:18:50.522 [INFO] [T3] No matching slots currently available.
+13:18:50.640 [INFO] [T2] No matching slots currently available.
+13:18:50.724 [INFO] [T3] Attempt 19/30
+13:18:50.781 [INFO] [T1] No matching slots currently available.
+13:18:50.844 [INFO] [T2] Attempt 19/30
+13:18:50.982 [INFO] [T1] Attempt 19/30
+13:18:51.026 [INFO] [T3] No matching slots currently available.
+13:18:51.116 [INFO] [T2] No matching slots currently available.
+13:18:51.231 [INFO] [T3] Attempt 20/30
+13:18:51.251 [INFO] [T1] No matching slots currently available.
+13:18:51.320 [INFO] [T2] Attempt 20/30
+13:18:51.456 [INFO] [T1] Attempt 20/30
+13:18:51.507 [INFO] [T3] No matching slots currently available.
+13:18:51.587 [INFO] [T2] No matching slots currently available.
+13:18:51.709 [INFO] [T3] Attempt 21/30
+13:18:51.741 [INFO] [T1] No matching slots currently available.
+13:18:51.791 [INFO] [T2] Attempt 21/30
+13:18:51.946 [INFO] [T1] Attempt 21/30
+13:18:52.013 [INFO] [T3] No matching slots currently available.
+13:18:52.042 [INFO] [T2] No matching slots currently available.
+13:18:52.219 [INFO] [T3] Attempt 22/30
+13:18:52.223 [INFO] [T1] No matching slots currently available.
+13:18:52.244 [INFO] [T2] Attempt 22/30
+13:18:52.429 [INFO] [T1] Attempt 22/30
+13:18:52.462 [INFO] [T3] No matching slots currently available.
+13:18:52.515 [INFO] [T2] No matching slots currently available.
+13:18:52.665 [INFO] [T3] Attempt 23/30
+13:18:52.716 [INFO] [T1] No matching slots currently available.
+13:18:52.718 [INFO] [T2] Attempt 23/30
+13:18:52.920 [INFO] [T1] Attempt 23/30
+13:18:52.997 [INFO] [T3] No matching slots currently available.
+13:18:53.020 [INFO] [T2] No matching slots currently available.
+13:18:53.202 [INFO] [T3] Attempt 24/30
+13:18:53.215 [INFO] [T1] No matching slots currently available.
+13:18:53.226 [INFO] [T2] Attempt 24/30
+13:18:53.421 [INFO] [T1] Attempt 24/30
+13:18:53.480 [INFO] [T3] No matching slots currently available.
+13:18:53.520 [INFO] [T2] No matching slots currently available.
+13:18:53.685 [INFO] [T3] Attempt 25/30
+13:18:53.699 [INFO] [T1] No matching slots currently available.
+13:18:53.723 [INFO] [T2] Attempt 25/30
+13:18:53.905 [INFO] [T1] Attempt 25/30
+13:18:53.962 [INFO] [T3] No matching slots currently available.
+13:18:54.006 [INFO] [T2] No matching slots currently available.
+13:18:54.163 [INFO] [T3] Attempt 26/30
+13:18:54.181 [INFO] [T1] No matching slots currently available.
+13:18:54.211 [INFO] [T2] Attempt 26/30
+13:18:54.385 [INFO] [T1] Attempt 26/30
+13:18:54.448 [INFO] [T3] No matching slots currently available.
+13:18:54.517 [INFO] [T2] No matching slots currently available.
+13:18:54.652 [INFO] [T3] Attempt 27/30
+13:18:54.660 [INFO] [T1] No matching slots currently available.
+13:18:54.719 [INFO] [T2] Attempt 27/30
+13:18:54.866 [INFO] [T1] Attempt 27/30
+13:18:54.983 [INFO] [T3] No matching slots currently available.
+13:18:55.029 [INFO] [T2] No matching slots currently available.
+13:18:55.140 [INFO] [T1] No matching slots currently available.
+13:18:55.188 [INFO] [T3] Attempt 28/30
+13:18:55.235 [INFO] [T2] Attempt 28/30
+13:18:55.343 [INFO] [T1] Attempt 28/30
+13:18:55.487 [INFO] [T3] No matching slots currently available.
+13:18:55.510 [INFO] [T2] No matching slots currently available.
+13:18:55.599 [INFO] [T1] No matching slots currently available.
+13:18:55.690 [INFO] [T3] Attempt 29/30
+13:18:55.715 [INFO] [T2] Attempt 29/30
+13:18:55.803 [INFO] [T1] Attempt 29/30
+13:18:55.964 [INFO] [T3] No matching slots currently available.
+13:18:56.001 [INFO] [T2] No matching slots currently available.
+13:18:56.064 [INFO] [T1] No matching slots currently available.
+13:18:56.165 [INFO] [T3] Attempt 30/30
+13:18:56.202 [INFO] [T2] Attempt 30/30
+13:18:56.268 [INFO] [T1] Attempt 30/30
+13:18:56.432 [INFO] [T3] No matching slots currently available.
+13:18:56.466 [INFO] [T2] No matching slots currently available.
+13:18:56.546 [INFO] [T1] No matching slots currently available.
+13:18:56.750 [INFO] Booking did not succeed within retry limits.

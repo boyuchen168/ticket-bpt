@@ -1,12 +1,10 @@
 #!/usr/bin/env python3
 """Full court availability: show all parks and all time slots for each type."""
 import json
-import yaml
+from config_store import load_config
 from tennis_bot import TennisClient
 
-CONFIG = "tennis_config.yaml"
-with open(CONFIG, "r", encoding="utf-8") as f:
-    cfg = yaml.safe_load(f)
+cfg = load_config()
 
 client = TennisClient(cfg)
 
@@ -121,7 +119,7 @@ for type_id, meta in type_map.items():
 
 print(f"\n{'='*72}")
 print("  配置建议:")
-print("  tennis_config.yaml 中 parktypecode 字段含义说明:")
+print("  MongoDB config 中 parktypecode 字段含义说明:")
 print(f"{'─'*72}")
 for type_id, meta in type_map.items():
     pc = meta["parktypecode_field"]

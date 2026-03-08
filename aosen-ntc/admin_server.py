@@ -5,34 +5,24 @@ Admin UI for tennis booking configuration and scheduling.
 
 from __future__ import annotations
 
-import os
 import re
 import subprocess
 from datetime import datetime, time, timedelta
 from pathlib import Path
 from typing import Any, Dict, List
 
-import yaml
 from flask import Flask, jsonify, render_template, request
-from pymongo import MongoClient
 from pymongo.errors import PyMongoError
 
+from config_store import get_mongo_db, load_config, save_config
 from tennis_bot import TennisClient
 
 app = Flask(__name__)
 
 BASE_DIR = Path(__file__).resolve().parent
-CONFIG_PATH = BASE_DIR / "tennis_config.yaml"
 BOT_PATH = BASE_DIR / "tennis_bot.py"
 LOG_PATH = BASE_DIR / "tennis_bot.log"
 CRON_MARKER = "# tennis-bot-admin"
-MONGO_URI_DEFAULT = "mongodb://admin:MongoAdmin2026!@1.94.238.248:8443/?authSource=admin"
-MONGO_URI = os.getenv("MONGO_URI", MONGO_URI_DEFAULT)
-MONGO_DB_NAME = os.getenv("MONGO_DB_NAME", "ticket_bpt")
-CRON_CONFIG_DOC_ID = "default"
-
-_mongo_client: MongoClient | None = None
-_mongo_db: Any | None = None
 
 COURT_TYPES = [
     {
@@ -85,95 +75,6 @@ COURT_TYPES = [
         "venue": "匹克球 (P1-P3)",
     },
 ]
-
-COURT_TYPE_COMMENT_BLOCK = """#Home Info / Court Types (parktypecode = id传给API的parktypeinfo参数):
-#ballcode=1 (网球), parktypecodes:
-#parktypecode=3, "室外硬地", 场馆: K场 (18个场地: K1-K18)
-#parktypecode=4, "室外草地", 场馆: G场 (5个场地: G3-G5)
-#parktypecode=13, "室内硬地", 场馆: A场+B场 (各6个)
-#parktypecode=21, "室内红土", 场馆: H场 (2个)
-#parktypecode=27, "网球墙", 场馆: 网球墙 (4个)
-#ballcode=2 (羽毛球), parktypecode=9, 场馆: 羽毛球馆 (Y1-Y5)
-#ballcode=3 (匹克球), parktypecode=28, 场馆: 匹克球 (P1-P3)
-"""
-
-
-def get_mongo_db() -> Any | None:
-    global _mongo_client, _mongo_db
-    if _mongo_db is not None:
-        return _mongo_db
-    try:
-        _mongo_client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=3000)
-        _mongo_client.admin.command("ping")
-        _mongo_db = _mongo_client[MONGO_DB_NAME]
-        _mongo_db["user_cookies"].create_index("mobile", unique=True)
-        return _mongo_db
-    except Exception as exc:  # noqa: BLE001
-        app.logger.warning("MongoDB unavailable, fallback to yaml: %s", exc)
-        _mongo_client = None
-        _mongo_db = None
-        return None
-
-
-def load_yaml_config() -> Dict[str, Any]:
-    if not CONFIG_PATH.exists():
-        return {}
-    with CONFIG_PATH.open("r", encoding="utf-8") as fh:
-        return yaml.safe_load(fh) or {}
-
-
-def save_yaml_config(cfg: Dict[str, Any]) -> None:
-    with CONFIG_PATH.open("w", encoding="utf-8") as fh:
-        yaml.safe_dump(cfg, fh, allow_unicode=True, sort_keys=False)
-        fh.write("\n")
-        fh.write(COURT_TYPE_COMMENT_BLOCK)
-
-
-def load_mongo_config() -> Dict[str, Any] | None:
-    db = get_mongo_db()
-    if db is None:
-        return None
-    try:
-        doc = db["cron_configs"].find_one({"_id": CRON_CONFIG_DOC_ID})
-    except PyMongoError as exc:
-        app.logger.warning("Load config from MongoDB failed: %s", exc)
-        return None
-    if not isinstance(doc, dict):
-        return None
-    return {
-        k: v
-        for k, v in doc.items()
-        if k not in {"_id", "updated_at"}
-    }
-
-
-def save_mongo_config(cfg: Dict[str, Any]) -> None:
-    db = get_mongo_db()
-    if db is None:
-        return
-    doc = {
-        "_id": CRON_CONFIG_DOC_ID,
-        **cfg,
-        "updated_at": datetime.utcnow(),
-    }
-    try:
-        db["cron_configs"].update_one({"_id": CRON_CONFIG_DOC_ID}, {"$set": doc}, upsert=True)
-    except PyMongoError as exc:
-        app.logger.warning("Save config to MongoDB failed: %s", exc)
-
-
-def load_config() -> Dict[str, Any]:
-    mongo_cfg = load_mongo_config()
-    if isinstance(mongo_cfg, dict):
-        return mongo_cfg
-    return load_yaml_config()
-
-
-def save_config(cfg: Dict[str, Any]) -> None:
-    # Persist to MongoDB first, then keep local yaml in sync for CLI runs.
-    save_mongo_config(cfg)
-    save_yaml_config(cfg)
-
 
 def upsert_user_cookie(payload: Dict[str, Any]) -> None:
     db = get_mongo_db()
@@ -666,7 +567,7 @@ def api_cron_set():
 
     cron_line = (
         f"{timing['cron_minute']} {timing['cron_hour']} {timing['cron_day']} "
-        f"{timing['cron_month']} * {python_path} {BOT_PATH} -c {CONFIG_PATH} book "
+        f"{timing['cron_month']} * {python_path} {BOT_PATH} book "
         f">> {LOG_PATH} 2>&1 {CRON_MARKER}"
     )
 
@@ -689,7 +590,7 @@ def api_run_now():
 
     with LOG_PATH.open("a", encoding="utf-8") as log_file:
         proc = subprocess.Popen(  # noqa: S603
-            ["python3", "-u", str(BOT_PATH), "-c", str(CONFIG_PATH), "book"],
+            ["python3", "-u", str(BOT_PATH), "book"],
             stdout=log_file,
             stderr=subprocess.STDOUT,
             cwd=str(BASE_DIR),

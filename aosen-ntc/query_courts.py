@@ -5,16 +5,13 @@ Queries home info, booking dates, code-open time, and all available slots.
 """
 import json
 import sys
-import yaml
+from config_store import load_config
 from tennis_bot import TennisClient, TennisBooker
 
-CONFIG = "tennis_config.yaml"
-
-with open(CONFIG, "r", encoding="utf-8") as f:
-    cfg = yaml.safe_load(f)
+cfg = load_config()
 
 client = TennisClient(cfg)
-booker = TennisBooker(CONFIG)
+booker = TennisBooker()
 
 DIVIDER = "=" * 70
 

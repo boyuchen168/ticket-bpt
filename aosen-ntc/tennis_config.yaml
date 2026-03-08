@@ -16,7 +16,7 @@ court:
   cardtypecode: '-1'
   parkstatus: '0'
   target_date: '2026-03-10'
-  target_time: 07:00
+  target_time: '12:00'
   target_time_end: '18:00'
   duration_hours: 2
   preferred_courts: []

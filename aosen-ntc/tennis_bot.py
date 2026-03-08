@@ -24,12 +24,13 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
 import requests
-import yaml
 from Crypto.Cipher import AES
+
+from config_store import load_config as load_db_config
+from config_store import save_config as save_db_config
 
 try:
     import ntplib
@@ -182,7 +183,7 @@ class TennisClient:
         if missing:
             raise ValueError(
                 f"Missing sign credentials: {', '.join(missing)}. "
-                "Run login first or populate auth in tennis_config.yaml."
+                "Run login first or populate auth in MongoDB config."
             )
 
     def generate_sign(
@@ -575,10 +576,8 @@ class TennisClient:
 
 
 class TennisBooker:
-    def __init__(self, config_path: str):
-        self.config_path = Path(config_path)
-        with self.config_path.open("r", encoding="utf-8") as fh:
-            self.cfg = yaml.safe_load(fh) or {}
+    def __init__(self):
+        self.cfg = load_db_config()
 
         self.client = TennisClient(self.cfg)
         self.success_event = threading.Event()
@@ -605,8 +604,7 @@ class TennisBooker:
         return self.cfg.setdefault("notify", {})
 
     def save_config(self) -> None:
-        with self.config_path.open("w", encoding="utf-8") as fh:
-            yaml.safe_dump(self.cfg, fh, allow_unicode=True, sort_keys=False)
+        save_db_config(self.cfg)
 
     # ------------------------------------------------------------------
     # High-level operations
@@ -646,7 +644,7 @@ class TennisBooker:
                 self.auth_cfg["maopenId"] = ma_open_id
             if save_to_config:
                 self.save_config()
-                log.info("Auth saved to %s", self.config_path)
+                log.info("Auth saved to MongoDB config collection.")
         return rsp
 
     def test_connectivity(self) -> bool:
@@ -1094,12 +1092,6 @@ class TennisBooker:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="tennis.bjofp.cn auto-booking bot")
     parser.add_argument(
-        "-c",
-        "--config",
-        default="tennis_config.yaml",
-        help="Path to config yaml (default: tennis_config.yaml)",
-    )
-    parser.add_argument(
         "action",
         choices=["info", "login", "auth", "book", "test"],
         help=(
@@ -1115,7 +1107,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--phonecode", default="", help="SMS phone code (login action only)")
     parser.add_argument("--union-id", default="", help="unionId for login (optional)")
     parser.add_argument("--maopen-id", default="", help="maopenId for login (optional)")
-    parser.add_argument("--save", action="store_true", help="Persist result back to config file")
+    parser.add_argument("--save", action="store_true", help="Persist result back to MongoDB config")
 
     # auth (proxy token injection) arguments
     parser.add_argument("--userid", default="", help="userid (auth action)")
@@ -1216,7 +1208,7 @@ def _do_auth_inject(bot: "TennisBooker", args: argparse.Namespace) -> None:
 
     if args.save:
         bot.save_config()
-        log.info("Tokens saved to %s", bot.config_path)
+        log.info("Tokens saved to MongoDB config collection.")
 
     # Quick sanity-check with a signed API call
     role_rsp = bot.client.query_user_role()
@@ -1231,7 +1223,7 @@ def main() -> None:
     parser = build_parser()
     args = parser.parse_args()
 
-    bot = TennisBooker(args.config)
+    bot = TennisBooker()
 
     if args.action == "info":
         bot.show_info()
