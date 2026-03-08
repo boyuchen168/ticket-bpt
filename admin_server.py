@@ -5,6 +5,8 @@ Admin UI for tennis booking configuration and scheduling.
 
 from __future__ import annotations
 
+import os
+import re
 import subprocess
 from datetime import datetime, time, timedelta
 from pathlib import Path
@@ -12,6 +14,10 @@ from typing import Any, Dict, List
 
 import yaml
 from flask import Flask, jsonify, render_template, request
+from pymongo import MongoClient
+from pymongo.errors import PyMongoError
+
+from tennis_bot import TennisClient
 
 app = Flask(__name__)
 
@@ -20,6 +26,13 @@ CONFIG_PATH = BASE_DIR / "tennis_config.yaml"
 BOT_PATH = BASE_DIR / "tennis_bot.py"
 LOG_PATH = BASE_DIR / "tennis_bot.log"
 CRON_MARKER = "# tennis-bot-admin"
+MONGO_URI_DEFAULT = "mongodb://admin:MongoAdmin2026!@1.94.238.248:8443/?authSource=admin"
+MONGO_URI = os.getenv("MONGO_URI", MONGO_URI_DEFAULT)
+MONGO_DB_NAME = os.getenv("MONGO_DB_NAME", "ticket_bpt")
+CRON_CONFIG_DOC_ID = "default"
+
+_mongo_client: MongoClient | None = None
+_mongo_db: Any | None = None
 
 COURT_TYPES = [
     {
@@ -85,18 +98,117 @@ COURT_TYPE_COMMENT_BLOCK = """#Home Info / Court Types:
 """
 
 
-def load_config() -> Dict[str, Any]:
+def get_mongo_db() -> Any | None:
+    global _mongo_client, _mongo_db
+    if _mongo_db is not None:
+        return _mongo_db
+    try:
+        _mongo_client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=3000)
+        _mongo_client.admin.command("ping")
+        _mongo_db = _mongo_client[MONGO_DB_NAME]
+        _mongo_db["user_cookies"].create_index("mobile", unique=True)
+        return _mongo_db
+    except Exception as exc:  # noqa: BLE001
+        app.logger.warning("MongoDB unavailable, fallback to yaml: %s", exc)
+        _mongo_client = None
+        _mongo_db = None
+        return None
+
+
+def load_yaml_config() -> Dict[str, Any]:
     if not CONFIG_PATH.exists():
         return {}
     with CONFIG_PATH.open("r", encoding="utf-8") as fh:
         return yaml.safe_load(fh) or {}
 
 
-def save_config(cfg: Dict[str, Any]) -> None:
+def save_yaml_config(cfg: Dict[str, Any]) -> None:
     with CONFIG_PATH.open("w", encoding="utf-8") as fh:
         yaml.safe_dump(cfg, fh, allow_unicode=True, sort_keys=False)
         fh.write("\n")
         fh.write(COURT_TYPE_COMMENT_BLOCK)
+
+
+def load_mongo_config() -> Dict[str, Any] | None:
+    db = get_mongo_db()
+    if db is None:
+        return None
+    try:
+        doc = db["cron_configs"].find_one({"_id": CRON_CONFIG_DOC_ID})
+    except PyMongoError as exc:
+        app.logger.warning("Load config from MongoDB failed: %s", exc)
+        return None
+    if not isinstance(doc, dict):
+        return None
+    return {
+        k: v
+        for k, v in doc.items()
+        if k not in {"_id", "updated_at"}
+    }
+
+
+def save_mongo_config(cfg: Dict[str, Any]) -> None:
+    db = get_mongo_db()
+    if db is None:
+        return
+    doc = {
+        "_id": CRON_CONFIG_DOC_ID,
+        **cfg,
+        "updated_at": datetime.utcnow(),
+    }
+    try:
+        db["cron_configs"].update_one({"_id": CRON_CONFIG_DOC_ID}, {"$set": doc}, upsert=True)
+    except PyMongoError as exc:
+        app.logger.warning("Save config to MongoDB failed: %s", exc)
+
+
+def load_config() -> Dict[str, Any]:
+    mongo_cfg = load_mongo_config()
+    if isinstance(mongo_cfg, dict):
+        return mongo_cfg
+    return load_yaml_config()
+
+
+def save_config(cfg: Dict[str, Any]) -> None:
+    # Persist to MongoDB first, then keep local yaml in sync for CLI runs.
+    save_mongo_config(cfg)
+    save_yaml_config(cfg)
+
+
+def upsert_user_cookie(payload: Dict[str, Any]) -> None:
+    db = get_mongo_db()
+    if db is None:
+        return
+    mobile = str(payload.get("mobile", "")).strip()
+    if not mobile:
+        return
+    doc = {
+        "mobile": mobile,
+        "userid": str(payload.get("userid", "")).strip(),
+        "bnglokbj": str(payload.get("bnglokbj", "")).strip(),
+        "csc": str(payload.get("csc", "")).strip(),
+        "cdc": str(payload.get("cdc", "")).strip(),
+        "openId": str(payload.get("openId", "")).strip(),
+        "maopenId": str(payload.get("maopenId", "")).strip(),
+        "unionId": str(payload.get("unionId", "")).strip(),
+        "updated_at": datetime.utcnow(),
+    }
+    try:
+        db["user_cookies"].update_one({"mobile": mobile}, {"$set": doc}, upsert=True)
+    except PyMongoError as exc:
+        app.logger.warning("Save user cookie to MongoDB failed: %s", exc)
+
+
+def build_login_client() -> TennisClient:
+    cfg = load_config()
+    platform = cfg.get("platform", {}) if isinstance(cfg.get("platform"), dict) else {}
+    base_url = str(platform.get("base_url", TennisClient.BASE_URL)).strip() or TennisClient.BASE_URL
+    auth = cfg.get("auth", {}) if isinstance(cfg.get("auth"), dict) else {}
+    return TennisClient({"platform": {"base_url": base_url}, "auth": auth})
+
+
+def validate_mobile(mobile: str) -> bool:
+    return bool(re.fullmatch(r"1\d{10}", mobile))
 
 
 def parse_time_str(open_time_str: str) -> time:
@@ -161,12 +273,15 @@ def calculate_cron_timing(
 
 
 def run_crontab_list() -> str:
-    result = subprocess.run(
-        ["crontab", "-l"],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
+    try:
+        result = subprocess.run(
+            ["crontab", "-l"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except FileNotFoundError:
+        return ""
     if result.returncode != 0:
         return ""
     return result.stdout
@@ -186,7 +301,10 @@ def set_cron_entry(line: str | None) -> bool:
     if line:
         lines.append(line)
     new_content = "\n".join(lines).rstrip("\n") + "\n"
-    result = subprocess.run(["crontab", "-"], input=new_content, text=True, check=False)
+    try:
+        result = subprocess.run(["crontab", "-"], input=new_content, text=True, check=False)
+    except FileNotFoundError:
+        return False
     return result.returncode == 0
 
 
@@ -217,6 +335,11 @@ def index():
     return render_template("admin.html")
 
 
+@app.get("/login")
+def login_page():
+    return render_template("login.html")
+
+
 @app.get("/api/court_types")
 def api_court_types():
     return jsonify(COURT_TYPES)
@@ -242,57 +365,144 @@ def api_get_config():
     return jsonify({"config": cfg, "booking_info": booking_info})
 
 
+@app.post("/api/auth/send-code")
+def api_send_code():
+    data = request.get_json(silent=True) or {}
+    mobile = str(data.get("mobile", "")).strip()
+    if not validate_mobile(mobile):
+        return jsonify({"ok": False, "error": "手机号格式不正确"}), 400
+    try:
+        client = build_login_client()
+        rsp = client.get_phone_code(mobile)
+        if client.is_success(rsp):
+            return jsonify({"ok": True, "message": str(rsp.get("respMsg", "验证码已发送"))})
+        return jsonify(
+            {
+                "ok": False,
+                "error": str(rsp.get("respMsg", "获取验证码失败")),
+                "raw": rsp,
+            }
+        ), 400
+    except Exception as exc:  # noqa: BLE001
+        return jsonify({"ok": False, "error": f"发送验证码失败: {exc}"}), 500
+
+
+@app.post("/api/auth/verify")
+def api_verify_code():
+    data = request.get_json(silent=True) or {}
+    mobile = str(data.get("mobile", "")).strip()
+    code = str(data.get("code", "")).strip()
+
+    if not validate_mobile(mobile):
+        return jsonify({"ok": False, "error": "手机号格式不正确"}), 400
+    if not code:
+        return jsonify({"ok": False, "error": "请输入验证码"}), 400
+
+    try:
+        client = build_login_client()
+        rsp = client.phone_code_login(mobile, code)
+        if not client.is_success(rsp):
+            return jsonify(
+                {
+                    "ok": False,
+                    "error": str(rsp.get("respMsg", "登录失败")),
+                    "raw": rsp,
+                }
+            ), 400
+
+        auth_update = rsp.get("auth_update", {}) if isinstance(rsp.get("auth_update"), dict) else {}
+        auth_payload = {
+            "mobile": mobile,
+            "userid": str(auth_update.get("userid", "")).strip(),
+            "bnglokbj": str(auth_update.get("bnglokbj", "")).strip(),
+            "csc": str(auth_update.get("csc", "")).strip(),
+            "cdc": str(auth_update.get("cdc", "")).strip(),
+            "openId": str(auth_update.get("openId", "")).strip(),
+            "maopenId": str(auth_update.get("maopenId", "")).strip(),
+            "unionId": str(auth_update.get("unionId", "")).strip(),
+        }
+        missing = [k for k in ("userid", "bnglokbj", "csc", "cdc") if not auth_payload[k]]
+        if missing:
+            return jsonify(
+                {
+                    "ok": False,
+                    "error": f"登录响应缺少关键字段: {', '.join(missing)}",
+                    "raw": rsp,
+                }
+            ), 400
+
+        cfg = load_config()
+        update_cfg_section(cfg, "auth", auth_payload)
+        save_config(cfg)
+        upsert_user_cookie(auth_payload)
+
+        return jsonify(
+            {
+                "ok": True,
+                "message": "登录成功，凭证已保存",
+                "auth": auth_payload,
+            }
+        )
+    except Exception as exc:  # noqa: BLE001
+        return jsonify({"ok": False, "error": f"验证码登录失败: {exc}"}), 500
+
+
 @app.post("/api/config")
 def api_save_config():
-    data = request.get_json(silent=True) or {}
-    cfg = load_config()
+    try:
+        data = request.get_json(silent=True) or {}
+        cfg = load_config()
 
-    incoming_court = data.get("court", {}) if isinstance(data.get("court"), dict) else {}
-    incoming_strategy = data.get("strategy", {}) if isinstance(data.get("strategy"), dict) else {}
-    incoming_notify = data.get("notify", {}) if isinstance(data.get("notify"), dict) else {}
+        incoming_court = data.get("court", {}) if isinstance(data.get("court"), dict) else {}
+        incoming_strategy = data.get("strategy", {}) if isinstance(data.get("strategy"), dict) else {}
+        incoming_notify = data.get("notify", {}) if isinstance(data.get("notify"), dict) else {}
 
-    parktypecode = str(incoming_court.get("parktypecode", "")).strip()
-    target_date = str(incoming_court.get("target_date", "")).strip()
-    booking_open_time = str(incoming_strategy.get("booking_open_time", "00:00:00")).strip()
-    advance_days = safe_int(incoming_strategy.get("advance_days", 4), 4)
+        parktypecode = str(incoming_court.get("parktypecode", "")).strip()
+        target_date = str(incoming_court.get("target_date", "")).strip()
+        booking_open_time = str(incoming_strategy.get("booking_open_time", "00:00:00")).strip()
+        advance_days = safe_int(incoming_strategy.get("advance_days", 4), 4)
 
-    booking_info = calculate_booking_open(target_date, booking_open_time, advance_days)
+        booking_info = calculate_booking_open(target_date, booking_open_time, advance_days)
 
-    court_updates = {
-        "parktypecode": parktypecode,
-        "target_date": target_date,
-        "target_time": str(incoming_court.get("target_time", "")).strip(),
-        "target_time_end": str(incoming_court.get("target_time_end", "")).strip(),
-        "duration_hours": safe_int(incoming_court.get("duration_hours", 1), 1),
-        "preferred_courts": incoming_court.get("preferred_courts", []),
-    }
+        court_updates = {
+            "parktypecode": parktypecode,
+            "target_date": target_date,
+            "target_time": str(incoming_court.get("target_time", "")).strip(),
+            "target_time_end": str(incoming_court.get("target_time_end", "")).strip(),
+            "duration_hours": safe_int(incoming_court.get("duration_hours", 1), 1),
+            "preferred_courts": incoming_court.get("preferred_courts", []),
+        }
 
-    ballcode = resolve_ballcode(parktypecode)
-    if ballcode:
-        court_updates["ballcode"] = ballcode
+        ballcode = resolve_ballcode(parktypecode)
+        if ballcode:
+            court_updates["ballcode"] = ballcode
 
-    strategy_updates = {
-        "booking_open_time": booking_open_time if len(booking_open_time) > 5 else f"{booking_open_time}:00",
-        "booking_open_datetime": booking_info["booking_open_datetime"],
-        "advance_days": advance_days,
-        "advance_ms": safe_int(incoming_strategy.get("advance_ms", 10000), 10000),
-        "prewarm_sec": safe_int(incoming_strategy.get("prewarm_sec", 30), 30),
-        "max_retries": safe_int(incoming_strategy.get("max_retries", 30), 30),
-        "retry_interval_ms": safe_int(incoming_strategy.get("retry_interval_ms", 200), 200),
-        "threads": safe_int(incoming_strategy.get("threads", 3), 3),
-        "skip_price_check": bool(incoming_strategy.get("skip_price_check", True)),
-    }
+        strategy_updates = {
+            "booking_open_time": booking_open_time if len(booking_open_time) > 5 else f"{booking_open_time}:00",
+            "booking_open_datetime": booking_info["booking_open_datetime"],
+            "advance_days": advance_days,
+            "advance_ms": safe_int(incoming_strategy.get("advance_ms", 10000), 10000),
+            "prewarm_sec": safe_int(incoming_strategy.get("prewarm_sec", 30), 30),
+            "max_retries": safe_int(incoming_strategy.get("max_retries", 30), 30),
+            "retry_interval_ms": safe_int(incoming_strategy.get("retry_interval_ms", 200), 200),
+            "threads": safe_int(incoming_strategy.get("threads", 3), 3),
+            "skip_price_check": bool(incoming_strategy.get("skip_price_check", True)),
+        }
 
-    notify_updates = {
-        "server_chan_key": str(incoming_notify.get("server_chan_key", "")).strip(),
-        "bark_url": str(incoming_notify.get("bark_url", "")).strip(),
-    }
+        notify_updates = {
+            "server_chan_key": str(incoming_notify.get("server_chan_key", "")).strip(),
+            "bark_url": str(incoming_notify.get("bark_url", "")).strip(),
+        }
 
-    update_cfg_section(cfg, "court", court_updates)
-    update_cfg_section(cfg, "strategy", strategy_updates)
-    update_cfg_section(cfg, "notify", notify_updates)
-    save_config(cfg)
-    return jsonify({"ok": True, "booking_info": booking_info})
+        update_cfg_section(cfg, "court", court_updates)
+        update_cfg_section(cfg, "strategy", strategy_updates)
+        update_cfg_section(cfg, "notify", notify_updates)
+        save_config(cfg)
+        return jsonify({"ok": True, "booking_info": booking_info})
+    except ValueError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    except Exception as exc:  # noqa: BLE001
+        return jsonify({"ok": False, "error": f"save config failed: {exc}"}), 500
 
 
 @app.get("/api/cron")
@@ -362,13 +572,19 @@ def api_cron_remove():
 
 @app.post("/api/run")
 def api_run_now():
-    log_file = LOG_PATH.open("a", encoding="utf-8")
-    proc = subprocess.Popen(  # noqa: S603
-        ["python3", str(BOT_PATH), "-c", str(CONFIG_PATH), "book"],
-        stdout=log_file,
-        stderr=subprocess.STDOUT,
-        cwd=str(BASE_DIR),
-    )
+    LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+    start_line = f"\n===== manual run at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} =====\n"
+    with LOG_PATH.open("a", encoding="utf-8") as marker_file:
+        marker_file.write(start_line)
+        marker_file.flush()
+
+    with LOG_PATH.open("a", encoding="utf-8") as log_file:
+        proc = subprocess.Popen(  # noqa: S603
+            ["python3", "-u", str(BOT_PATH), "-c", str(CONFIG_PATH), "book"],
+            stdout=log_file,
+            stderr=subprocess.STDOUT,
+            cwd=str(BASE_DIR),
+        )
     return jsonify({"ok": True, "pid": proc.pid})
 
 

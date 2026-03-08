@@ -53,6 +53,7 @@ class AuthState:
     cdc: str = ""
     open_id: str = ""
     ma_open_id: str = ""
+    union_id: str = ""
 
     @classmethod
     def from_config(cls, cfg: Dict[str, Any]) -> "AuthState":
@@ -64,6 +65,7 @@ class AuthState:
             cdc=str(auth.get("cdc", "")).strip(),
             open_id=str(auth.get("openId", auth.get("openid", ""))).strip(),
             ma_open_id=str(auth.get("maopenId", auth.get("maopenid", ""))).strip(),
+            union_id=str(auth.get("unionId", auth.get("unionid", ""))).strip(),
         )
 
     def to_dict(self) -> Dict[str, str]:
@@ -74,6 +76,7 @@ class AuthState:
             "cdc": self.cdc,
             "openId": self.open_id,
             "maopenId": self.ma_open_id,
+            "unionId": self.union_id,
         }
 
 
@@ -81,6 +84,9 @@ class TennisClient:
     BASE_URL = "https://tennis.bjofp.cn"
     LOGIN_AES_SEED = "gjwqerxxzxasdfqw"
     PS_DECRYPT_HEX = "d7e0762294db597f05d77415b0584fb0"
+    # Key for encrypting loginname in getPhoneCode.action:
+    # mini-program encrypCode() uses MD5("yesixur!@#$1a2b3c").toUpperCase()[:16]
+    LOGINNAME_AES_KEY = hashlib.md5(b"yesixur!@#$1a2b3c").hexdigest().upper()[:16]
 
     def __init__(self, config: Dict[str, Any]):
         self.cfg = config
@@ -231,6 +237,15 @@ class TennisClient:
         plain = cls._unpad_pkcs7(plain)
         return plain.decode("utf-8", errors="replace")
 
+    @classmethod
+    def _aes_ecb_encrypt_b64(cls, plaintext: str, key: str) -> str:
+        """AES-ECB encrypt plaintext with PKCS7 padding, return base64 string."""
+        raw = plaintext.encode("utf-8")
+        pad_len = 16 - (len(raw) % 16)
+        raw += bytes([pad_len] * pad_len)
+        cipher = AES.new(key.encode("utf-8"), AES.MODE_ECB)
+        return base64.b64encode(cipher.encrypt(raw)).decode("utf-8")
+
     @staticmethod
     def _secret_shuffle(seed: str) -> str:
         # Same transform as mini-program function `c(...)`.
@@ -342,14 +357,9 @@ class TennisClient:
         )
 
     def get_phone_code(self, mobile: str, code_type: int = 3) -> Dict[str, Any]:
-        # HAR confirms: loginname is the AES-ECB encrypted mobile (base64), not plain text.
-        from Crypto.Cipher import AES as _AES
-        import base64 as _b64
-        from Crypto.Util.Padding import pad as _pad
-        key = self.login_aes_key().encode("utf-8")
-        cipher = _AES.new(key, _AES.MODE_ECB)
-        encrypted = _b64.b64encode(cipher.encrypt(_pad(mobile.encode("utf-8"), 16))).decode()
-        params = {"loginname": encrypted, "type": code_type}
+        # mini-program encrypCode(): AES-ECB with key = MD5("yesixur!@#$1a2b3c").upper()[:16]
+        loginname = self._aes_ecb_encrypt_b64(mobile, self.LOGINNAME_AES_KEY)
+        params = {"loginname": loginname, "type": str(code_type)}
         return self._request("GET", "/TennisCenterInterface/umUser/getPhoneCode.action", params=params)
 
     def phone_code_login(
@@ -359,11 +369,14 @@ class TennisClient:
         union_id: str = "",
         ma_open_id: str = "",
     ) -> Dict[str, Any]:
-        params = {"mobile": mobile, "phonecode": phonecode}
-        if union_id:
-            params["unionId"] = union_id
-        if ma_open_id:
-            params["maopenId"] = ma_open_id
+        effective_union_id = union_id or self.auth.union_id
+        effective_ma_open_id = ma_open_id or self.auth.ma_open_id
+        params = {
+            "mobile": mobile,
+            "phonecode": phonecode,
+            "unionId": effective_union_id,
+            "maopenId": effective_ma_open_id,
+        }
 
         # HAR confirms: this endpoint is GET with query params.
         response = self._request(
@@ -394,6 +407,9 @@ class TennisClient:
             ).strip()
             self.auth.ma_open_id = str(
                 user.get("maopenId", user.get("maopenid", self.auth.ma_open_id))
+            ).strip()
+            self.auth.union_id = str(
+                user.get("unionId", user.get("unionid", self.auth.union_id))
             ).strip()
 
         response["auth_update"] = self.auth.to_dict()

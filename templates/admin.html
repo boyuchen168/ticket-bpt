@@ -13,11 +13,13 @@
         <h1 class="text-xl font-semibold">Tennis Booking Admin</h1>
         <p class="text-sm text-slate-500">配置 parktype / 预约日期 / 自动 cron 抢票</p>
       </div>
-      <div class="flex gap-2">
+      <div class="flex gap-2 items-center">
+        <a href="/login" class="px-3 py-2 rounded-lg border border-slate-300 text-slate-700 text-sm hover:bg-slate-50">重新登录</a>
         <button id="saveBtn" class="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm">保存配置</button>
         <button id="runBtn" class="px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm">立即执行</button>
       </div>
     </header>
+    <div id="noticeBar" class="hidden rounded-lg px-4 py-2 text-sm"></div>
 
     <section class="bg-white rounded-xl shadow-sm p-5 space-y-4">
       <h2 class="text-base font-semibold">1) 预约参数</h2>
@@ -140,10 +142,69 @@
 
   <script>
     const courtTypes = [];
+    let noticeTimer = null;
 
     function el(id) { return document.getElementById(id); }
     function toHHMMSS(v) { return v && v.length === 5 ? v + ":00" : (v || "00:00:00"); }
     function setText(id, value) { el(id).textContent = value || ""; }
+    function setBtnLoading(btn, loadingText, isLoading) {
+      if (isLoading) {
+        btn.dataset.prevText = btn.textContent;
+        btn.disabled = true;
+        btn.classList.add("opacity-60", "cursor-not-allowed");
+        btn.textContent = loadingText;
+        return;
+      }
+      btn.disabled = false;
+      btn.classList.remove("opacity-60", "cursor-not-allowed");
+      if (btn.dataset.prevText) btn.textContent = btn.dataset.prevText;
+    }
+
+    function flashBtnSuccess(btn, successText) {
+      const original = btn.textContent;
+      btn.textContent = successText;
+      btn.classList.add("ring-2", "ring-emerald-400", "ring-offset-2");
+      window.setTimeout(() => {
+        btn.classList.remove("ring-2", "ring-emerald-400", "ring-offset-2");
+        btn.textContent = original;
+      }, 1000);
+    }
+
+    function showNotice(message, kind = "ok") {
+      const bar = el("noticeBar");
+      bar.textContent = message;
+      bar.classList.remove(
+        "hidden",
+        "bg-emerald-50",
+        "text-emerald-700",
+        "border",
+        "border-emerald-200",
+        "bg-rose-50",
+        "text-rose-700",
+        "border-rose-200"
+      );
+      if (kind === "error") {
+        bar.classList.add("bg-rose-50", "text-rose-700", "border", "border-rose-200");
+      } else {
+        bar.classList.add("bg-emerald-50", "text-emerald-700", "border", "border-emerald-200");
+      }
+      if (noticeTimer) window.clearTimeout(noticeTimer);
+      noticeTimer = window.setTimeout(() => bar.classList.add("hidden"), 3000);
+    }
+
+    async function fetchJson(url, options) {
+      const response = await fetch(url, options);
+      const contentType = response.headers.get("content-type") || "";
+      const payload = contentType.includes("application/json")
+        ? await response.json()
+        : { ok: false, error: await response.text() };
+
+      if (!response.ok) {
+        const message = payload && payload.error ? payload.error : `HTTP ${response.status}`;
+        throw new Error(message);
+      }
+      return payload;
+    }
 
     function updateParktypeDesc() {
       const selected = courtTypes.find((x) => x.value === el("parktypecode").value);
@@ -229,7 +290,7 @@
     }
 
     async function loadConfig() {
-      const resp = await fetch("/api/config").then((r) => r.json());
+      const resp = await fetchJson("/api/config", { cache: "no-store" });
       applyConfig(resp.config || {});
       if (resp.booking_info) {
         setText("playDatePreview", resp.booking_info.play_date);
@@ -240,19 +301,16 @@
 
     async function saveConfig() {
       const payload = collectPayload();
-      const resp = await fetch("/api/config", {
+      const resp = await fetchJson("/api/config", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
-      }).then((r) => r.json());
+      });
 
-      if (!resp.ok) {
-        alert("保存失败");
-        return;
-      }
       setText("playDatePreview", resp.booking_info.play_date);
       setText("openDisplayPreview", resp.booking_info.booking_open_display);
       setText("openDateTimePreview", resp.booking_info.booking_open_datetime);
+      return true;
     }
 
     async function previewCron() {
@@ -283,54 +341,57 @@
     }
 
     async function refreshCronStatus() {
-      const data = await fetch("/api/cron").then((r) => r.json());
+      const data = await fetchJson("/api/cron", { cache: "no-store" });
       setText("cronStatus", data.active ? "✅ active" : "inactive");
       setText("cronEntry", data.entry || "");
     }
 
     async function setCron() {
-      await saveConfig();
+      const saveOk = await saveConfig();
+      if (!saveOk) return;
       const body = { buffer_minutes: Number(el("buffer_minutes").value || "10") };
-      const data = await fetch("/api/cron/set", {
+      const data = await fetchJson("/api/cron/set", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
-      }).then((r) => r.json());
-
-      if (!data.ok) {
-        alert("设置 cron 失败");
-        return;
-      }
+      });
       setText("cronStartPreview", data.timing.cron_start_datetime);
       setText("cronEntry", data.cron_line);
       setText("cronStatus", "✅ active");
     }
 
     async function removeCron() {
-      const data = await fetch("/api/cron/remove", { method: "DELETE" }).then((r) => r.json());
-      if (!data.ok) {
-        alert("移除 cron 失败");
-        return;
-      }
+      await fetchJson("/api/cron/remove", { method: "DELETE" });
       setText("cronStatus", "inactive");
       setText("cronEntry", "");
       setText("cronStartPreview", "");
     }
 
     async function runNow() {
-      const data = await fetch("/api/run", { method: "POST" }).then((r) => r.json());
-      if (!data.ok) {
-        alert("启动失败");
-        return;
-      }
-      alert(`脚本已启动, PID=${data.pid}`);
+      const data = await fetchJson("/api/run", { method: "POST" });
+      showNotice(`脚本已启动, PID=${data.pid}`);
       await refreshLogs();
+      window.setTimeout(refreshLogs, 1000);
+      window.setTimeout(refreshLogs, 2500);
     }
 
     async function refreshLogs() {
-      const data = await fetch("/api/logs").then((r) => r.json());
+      const data = await fetchJson("/api/logs", { cache: "no-store" });
       el("logsBox").textContent = (data.lines || []).join("\n");
       el("logsBox").scrollTop = el("logsBox").scrollHeight;
+    }
+
+    async function withButtonAction(buttonId, loadingText, successText, action, errorPrefix) {
+      const btn = el(buttonId);
+      setBtnLoading(btn, loadingText, true);
+      try {
+        await action();
+        setBtnLoading(btn, loadingText, false);
+        flashBtnSuccess(btn, successText);
+      } catch (error) {
+        setBtnLoading(btn, loadingText, false);
+        showNotice(`${errorPrefix}: ${error.message || String(error)}`, "error");
+      }
     }
 
     async function init() {
@@ -340,12 +401,24 @@
       await refreshCronStatus();
       await refreshLogs();
 
-      el("saveBtn").addEventListener("click", saveConfig);
-      el("runBtn").addEventListener("click", runNow);
-      el("previewCronBtn").addEventListener("click", previewCron);
-      el("setCronBtn").addEventListener("click", setCron);
-      el("removeCronBtn").addEventListener("click", removeCron);
-      el("refreshLogsBtn").addEventListener("click", refreshLogs);
+      el("saveBtn").addEventListener("click", () =>
+        withButtonAction("saveBtn", "保存中...", "保存成功", saveConfig, "保存失败")
+      );
+      el("runBtn").addEventListener("click", () =>
+        withButtonAction("runBtn", "执行中...", "已启动", runNow, "启动失败")
+      );
+      el("previewCronBtn").addEventListener("click", () =>
+        previewCron().catch((error) => showNotice(`预览失败: ${error.message || String(error)}`, "error"))
+      );
+      el("setCronBtn").addEventListener("click", () =>
+        withButtonAction("setCronBtn", "设置中...", "设置成功", setCron, "设置 cron 失败")
+      );
+      el("removeCronBtn").addEventListener("click", () =>
+        withButtonAction("removeCronBtn", "移除中...", "移除成功", removeCron, "移除 cron 失败")
+      );
+      el("refreshLogsBtn").addEventListener("click", () =>
+        refreshLogs().catch((error) => showNotice(`刷新日志失败: ${error.message || String(error)}`, "error"))
+      );
       el("parktypecode").addEventListener("change", updateParktypeDesc);
 
       for (const id of ["target_date", "advance_days", "booking_open_time", "buffer_minutes"]) {
@@ -353,11 +426,15 @@
       }
 
       window.setInterval(() => {
-        if (el("autoRefreshLogs").checked) refreshLogs();
+        if (el("autoRefreshLogs").checked) {
+          refreshLogs().catch(() => {});
+        }
       }, 3000);
     }
 
-    init();
+    init().catch((error) => {
+      showNotice(`初始化失败: ${error.message || String(error)}`, "error");
+    });
   </script>
 </body>
 </html>

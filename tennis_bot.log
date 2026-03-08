@@ -1,0 +1,22 @@
+
+===== manual run at 2026-03-08 12:11:00 =====
+12:11:00.493 [INFO] ============================================================
+12:11:00.493 [INFO] Base URL: https://tennis.bjofp.cn
+12:11:00.493 [INFO] User ID: 79303
+12:11:00.493 [INFO] Target date: 2026-03-14
+12:11:00.494 [INFO] Target time: 14:00
+12:11:00.494 [INFO] Court type code: 4
+12:11:00.494 [INFO] Ball code: 1
+12:11:00.494 [INFO] Threads: 3
+12:11:00.494 [INFO] ============================================================
+12:11:00.527 [INFO] NTP offset: +260 ms
+12:11:00.527 [INFO] Using ballcode=1, parktypecode=4
+Traceback (most recent call last):
+  File "/Users/jason/IdeaProjects/ticket-bpt/tennis_bot.py", line 1245, in <module>
+    main()
+  File "/Users/jason/IdeaProjects/ticket-bpt/tennis_bot.py", line 1240, in main
+    success = bot.auto_book()
+              ^^^^^^^^^^^^^^^
+  File "/Users/jason/IdeaProjects/ticket-bpt/tennis_bot.py", line 1054, in auto_book
+    time.sleep((prewarm_ms - now) / 1000.0)
+KeyboardInterrupt
