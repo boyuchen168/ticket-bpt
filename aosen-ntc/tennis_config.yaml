@@ -15,8 +15,8 @@ court:
   ballcode: '1'
   cardtypecode: '-1'
   parkstatus: '0'
-  target_date: '2026-03-08'
-  target_time: '14:00'
+  target_date: '2026-03-10'
+  target_time: 07:00
   target_time_end: '18:00'
   duration_hours: 2
   preferred_courts: []
@@ -28,7 +28,7 @@ platform:
   base_url: https://tennis.bjofp.cn
   timeout_sec: 12
 strategy:
-  booking_open_datetime: '2026-03-05 00:00:00'
+  booking_open_datetime: '2026-03-08 00:00:00'
   booking_open_time: 00:00:00
   advance_ms: 10000
   skip_price_check: true
@@ -36,7 +36,7 @@ strategy:
   retries_per_slot: 2
   max_retries: 30
   retry_interval_ms: 200
-  advance_days: 4
+  advance_days: 3
   threads: 3
 
 #Home Info / Court Types (parktypecode = id传给API的parktypeinfo参数):

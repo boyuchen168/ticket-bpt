@@ -807,6 +807,14 @@ class TennisBooker:
             except Exception:  # noqa: BLE001
                 target_hour = None
 
+        target_time_end = str(self.court_cfg.get("target_time_end", "")).strip()
+        target_hour_end: Optional[int] = None
+        if target_time_end:
+            try:
+                target_hour_end = int(target_time_end.split(":", 1)[0])
+            except Exception:  # noqa: BLE001
+                target_hour_end = None
+
         duration = int(self.court_cfg.get("duration_hours", 1))
         duration = max(1, duration)
 
@@ -836,6 +844,12 @@ class TennisBooker:
                         break
                     sequence.append(slot)
                 if not ok:
+                    continue
+
+                # Hard-filter: reject slots outside the configured time window.
+                if target_hour is not None and start_hour < target_hour:
+                    continue
+                if target_hour_end is not None and (start_hour + duration) > target_hour_end:
                     continue
 
                 sample = sequence[0]
