@@ -262,6 +262,14 @@ def set_cron_entry(line: str | None) -> bool:
     lines: List[str] = [item for item in existing.splitlines() if CRON_MARKER not in item]
     if line:
         lines.append(line)
+    # If nothing remains, remove the crontab entirely instead of writing a blank file.
+    if not any(l.strip() for l in lines):
+        try:
+            result = subprocess.run(["crontab", "-r"], capture_output=True, text=True, check=False)
+        except FileNotFoundError:
+            return False
+        # exit code 1 is acceptable when there was no crontab to remove.
+        return result.returncode in (0, 1)
     new_content = "\n".join(lines).rstrip("\n") + "\n"
     try:
         result = subprocess.run(["crontab", "-"], input=new_content, text=True, check=False)
@@ -497,6 +505,10 @@ def api_save_config():
             "retry_interval_ms": safe_int(incoming_strategy.get("retry_interval_ms", 200), 200),
             "threads": safe_int(incoming_strategy.get("threads", 3), 3),
             "skip_price_check": bool(incoming_strategy.get("skip_price_check", True)),
+            "burst_count": safe_int(incoming_strategy.get("burst_count", 15), 15),
+            "burst_timeout_sec": safe_int(incoming_strategy.get("burst_timeout_sec", 5), 5),
+            "direct_fire": bool(incoming_strategy.get("direct_fire", True)),
+            "direct_fire_threads": safe_int(incoming_strategy.get("direct_fire_threads", 2), 2),
         }
 
         notify_updates = {
@@ -538,7 +550,11 @@ def api_cron_preview():
 @app.post("/api/cron/set")
 def api_cron_set():
     data = request.get_json(silent=True) or {}
-    cfg = load_config()
+    try:
+        cfg = load_config()
+    except Exception as exc:  # noqa: BLE001
+        return jsonify({"ok": False, "error": f"load config failed: {exc}"}), 500
+
     court_cfg = cfg.get("court", {}) if isinstance(cfg.get("court"), dict) else {}
     strategy_cfg = cfg.get("strategy", {}) if isinstance(cfg.get("strategy"), dict) else {}
 
@@ -547,7 +563,10 @@ def api_cron_set():
     advance_days = safe_int(strategy_cfg.get("advance_days", data.get("advance_days", 4)), 4)
     buffer_minutes = safe_int(data.get("buffer_minutes", 10), 10)
 
-    timing = calculate_cron_timing(target_date, open_time, advance_days, buffer_minutes)
+    try:
+        timing = calculate_cron_timing(target_date, open_time, advance_days, buffer_minutes)
+    except ValueError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
 
     # Keep strategy.booking_open_datetime in sync with the cron schedule.
     update_cfg_section(

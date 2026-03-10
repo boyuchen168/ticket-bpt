@@ -18,6 +18,7 @@ import json
 import logging
 import random
 import re
+import socket
 import string
 import threading
 import time
@@ -28,6 +29,7 @@ from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
 import requests
 from Crypto.Cipher import AES
+from requests.adapters import HTTPAdapter
 
 from config_store import load_config as load_db_config
 from config_store import save_config as save_db_config
@@ -44,6 +46,17 @@ logging.basicConfig(
     datefmt="%H:%M:%S",
 )
 log = logging.getLogger("tennis_bot")
+
+
+class FastHTTPAdapter(HTTPAdapter):
+    """HTTPAdapter with TCP_NODELAY to disable Nagle buffering (~40ms saving)."""
+
+    def init_poolmanager(self, *args, **kwargs):
+        kwargs.setdefault(
+            "socket_options",
+            [(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)],
+        )
+        super().init_poolmanager(*args, **kwargs)
 
 
 @dataclass
@@ -109,6 +122,9 @@ class TennisClient:
                 ),
             }
         )
+        adapter = FastHTTPAdapter(pool_connections=20, pool_maxsize=20)
+        self.session.mount("https://", adapter)
+        self.session.mount("http://", adapter)
         self.time_offset_ms = 0
 
     # ------------------------------------------------------------------
@@ -128,6 +144,14 @@ class TennisClient:
 
     def now_ms(self) -> int:
         return int(time.time() * 1000) + self.time_offset_ms
+
+    def pre_warm_connection(self) -> None:
+        """Establish TCP + TLS connection before the critical window."""
+        try:
+            self.session.head(self.base_url, timeout=5)
+            log.info("Connection pre-warmed to %s", self.base_url)
+        except Exception as exc:  # noqa: BLE001
+            log.warning("Connection pre-warm failed: %s", exc)
 
     # ------------------------------------------------------------------
     # Sign/decrypt internals (reverse-engineered from mini-program)
@@ -287,6 +311,7 @@ class TennisClient:
         params: Optional[Dict[str, Any]] = None,
         form: Optional[Dict[str, Any]] = None,
         json_body: Optional[Dict[str, Any]] = None,
+        timeout: Optional[int] = None,
     ) -> Dict[str, Any]:
         url = f"{self.base_url}{path}"
         try:
@@ -296,7 +321,7 @@ class TennisClient:
                 params=params,
                 data=form,
                 json=json_body,
-                timeout=self.timeout,
+                timeout=timeout if timeout is not None else self.timeout,
             )
         except Exception as exc:  # noqa: BLE001
             return {"respCode": -1, "respMsg": f"request error: {exc}", "datas": None}
@@ -443,6 +468,7 @@ class TennisClient:
         parkstatus: str = "0",
         changefieldtype: str = "0",
         reserve_detail_ids: str = "",
+        timeout: Optional[int] = None,
     ) -> Dict[str, Any]:
         payload: Dict[str, Any] = {
             "ballcode": str(ballcode),
@@ -461,6 +487,7 @@ class TennisClient:
             "POST",
             "/TennisCenterInterface/pmPark/v2/getParkShowByParam.action",
             form=signed,
+            timeout=timeout,
         )
         return self._postprocess_response(rsp, decrypt_datas=True, decrypt_ps=False)
 
@@ -485,6 +512,7 @@ class TennisClient:
         captcha_verification: str = "",
         add_order_type: str = "wx",
         userid: Optional[str] = None,
+        timeout: Optional[int] = None,
     ) -> Dict[str, Any]:
         payload: Dict[str, Any] = {
             "userid": str(userid or self.auth.userid),
@@ -497,7 +525,10 @@ class TennisClient:
         }
         signed = self._with_sign(payload, ps_mode=True, force_userid=False)
         rsp = self._request(
-            "POST", "/TennisCenterInterface/pmPark/addParkOrder.action", form=signed
+            "POST",
+            "/TennisCenterInterface/pmPark/addParkOrder.action",
+            form=signed,
+            timeout=timeout,
         )
         return self._postprocess_response(rsp, decrypt_datas=True, decrypt_ps=False)
 
@@ -618,6 +649,9 @@ class TennisBooker:
         log.info("Court type code: %s", self.court_cfg.get("parktypecode", "6"))
         log.info("Ball code: %s", self.court_cfg.get("ballcode", "<auto>"))
         log.info("Threads: %s", self.strategy_cfg.get("threads", 3))
+        log.info("Burst count: %s", self.strategy_cfg.get("burst_count", 15))
+        log.info("Direct fire: %s (threads=%s)", self.strategy_cfg.get("direct_fire", True), self.strategy_cfg.get("direct_fire_threads", 2))
+        log.info("Skip price check: %s", self.strategy_cfg.get("skip_price_check", False))
         log.info("=" * 60)
 
     def login(
@@ -702,7 +736,12 @@ class TennisBooker:
             return None
 
         today = datetime.now().date()
-        return datetime.strptime(f"{today} {open_time}", "%Y-%m-%d %H:%M:%S")
+        dt = datetime.strptime(f"{today} {open_time}", "%Y-%m-%d %H:%M:%S")
+        # Mirror the admin logic: "00:00:00" means next-day midnight (24:00),
+        # so advance by one day to avoid returning a past datetime.
+        if dt.hour == 0 and dt.minute == 0 and dt.second == 0:
+            dt += timedelta(days=1)
+        return dt
 
     def wait_for_open_time(self) -> None:
         target_dt = self._target_booking_datetime()
@@ -755,7 +794,9 @@ class TennisBooker:
         except Exception:  # noqa: BLE001
             return default
 
-    def _collect_available_slots(self, payload: Dict[str, Any], target_date: str) -> List[Dict[str, Any]]:
+    def _collect_available_slots(
+        self, payload: Dict[str, Any], target_date: str, include_booked: bool = False,
+    ) -> List[Dict[str, Any]]:
         slots: List[Dict[str, Any]] = []
         ven_list = payload.get("venList", []) if isinstance(payload, dict) else []
         for venue in ven_list:
@@ -774,7 +815,7 @@ class TennisBooker:
                 reserve_items = park.get("reserve", []) or []
                 for reserve in reserve_items:
                     status = self._parse_int(reserve.get("bookstatus"))
-                    if status != 0:
+                    if not include_booked and status != 0:
                         continue
                     hour = self._parse_int(reserve.get("time"))
                     if hour < 0:
@@ -793,7 +834,9 @@ class TennisBooker:
                     slots.append(slot)
         return slots
 
-    def _select_slots(self, slots: Sequence[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def _rank_candidates(
+        self, slots: Sequence[Dict[str, Any]],
+    ) -> List[Tuple[int, int, int, str, List[Dict[str, Any]]]]:
         if not slots:
             return []
 
@@ -844,7 +887,6 @@ class TennisBooker:
                 if not ok:
                     continue
 
-                # Hard-filter: reject slots outside the configured time window.
                 if target_hour is not None and start_hour < target_hour:
                     continue
                 if target_hour_end is not None and (start_hour + duration) > target_hour_end:
@@ -863,10 +905,19 @@ class TennisBooker:
                 time_score = abs(start_hour - target_hour) if target_hour is not None else 0
                 candidates.append((preferred_score, time_score, start_hour, park_name, sequence))
 
-        if not candidates:
-            return []
         candidates.sort(key=lambda x: (x[0], x[1], x[2], x[3]))
-        return candidates[0][4]
+        return candidates
+
+    def _select_slots(self, slots: Sequence[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        candidates = self._rank_candidates(slots)
+        return candidates[0][4] if candidates else []
+
+    def _select_slots_ranked(
+        self, slots: Sequence[Dict[str, Any]], max_results: int = 5,
+    ) -> List[List[Dict[str, Any]]]:
+        """Return top N candidate slot groups ranked by preference."""
+        candidates = self._rank_candidates(slots)
+        return [c[4] for c in candidates[:max_results]]
 
     @staticmethod
     def _to_park_list(slots: Sequence[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -894,6 +945,114 @@ class TennisBooker:
                 if payload.get(key):
                     return str(payload[key])
         return ""
+
+    # ------------------------------------------------------------------
+    # Pre-build & direct fire
+    # ------------------------------------------------------------------
+    def _pre_query_structure(
+        self, target_date: str, ballcode: str,
+    ) -> List[List[Dict[str, Any]]]:
+        """Query courts before open time to pre-build order payloads.
+
+        Returns up to 5 candidate park_lists ranked by preference. These can
+        be fired directly via add_park_order at open time, saving the query
+        round-trip entirely.
+        """
+        parktypeinfo = str(self.court_cfg.get("parktypecode", "6"))
+        cardtypecode = str(self.court_cfg.get("cardtypecode", "-1"))
+        parkstatus = str(self.court_cfg.get("parkstatus", "0"))
+
+        courts_rsp = self.client.query_courts(
+            date=target_date,
+            parktypeinfo=parktypeinfo,
+            ballcode=ballcode,
+            cardtypecode=cardtypecode,
+            userid=self.client.auth.userid,
+            parkstatus=parkstatus,
+            changefieldtype="0",
+        )
+        if not self.client.is_success(courts_rsp):
+            log.warning("Pre-query structure failed: %s", courts_rsp.get("respMsg"))
+            return []
+
+        payload = self.client.unwrap_payload(courts_rsp)
+        if not isinstance(payload, dict):
+            return []
+
+        all_slots = self._collect_available_slots(payload, target_date, include_booked=True)
+        ranked = self._select_slots_ranked(all_slots, max_results=5)
+        if not ranked:
+            log.warning("Pre-query: no matching slot groups found in court structure.")
+            return []
+
+        result = [self._to_park_list(group) for group in ranked]
+        for i, pl in enumerate(result):
+            log.info("Pre-built candidate #%d: %s", i + 1, json.dumps(pl, ensure_ascii=False))
+        return result
+
+    def _direct_fire_worker(
+        self, thread_id: int, pre_park_lists: List[List[Dict[str, Any]]],
+    ) -> bool:
+        """Fire pre-built add_park_order requests without querying courts first."""
+        if not pre_park_lists:
+            return False
+
+        retries = int(self.strategy_cfg.get("max_retries", 30))
+        burst_timeout = int(self.strategy_cfg.get("burst_timeout_sec", 5))
+        paywaycode = self.court_cfg.get("paywaycode", 2)
+        mobile = str(self.auth_cfg.get("mobile", "")).strip()
+        ordercode = str(self.auth_cfg.get("ordercode", "")).strip()
+        captcha = str(self.auth_cfg.get("captchaVerification", "")).strip()
+
+        for attempt in range(1, retries + 1):
+            if self.success_event.is_set():
+                return False
+
+            park_list = pre_park_lists[(attempt - 1) % len(pre_park_lists)]
+
+            log.info("[DF%s] Direct fire attempt %d/%d", thread_id, attempt, retries)
+
+            t0 = time.time()
+            order_rsp = self.client.add_park_order(
+                park_list,
+                paywaycode=paywaycode,
+                mobile=mobile,
+                ordercode=ordercode,
+                captcha_verification=captcha,
+                add_order_type="wx",
+                userid=self.client.auth.userid,
+                timeout=burst_timeout,
+            )
+            elapsed_ms = (time.time() - t0) * 1000
+
+            if not self.client.is_success(order_rsp):
+                log.info(
+                    "[DF%s] Failed (%.0fms): %s",
+                    thread_id, elapsed_ms, order_rsp.get("respMsg"),
+                )
+                continue
+
+            order_payload = self.client.unwrap_payload(order_rsp)
+            order_no = self._extract_order_no(order_payload)
+            if not order_no:
+                log.warning("[DF%s] Order succeeded but no orderNo (%.0fms)", thread_id, elapsed_ms)
+                continue
+
+            log.info("[DF%s] SUCCESS! orderNo=%s (%.0fms)", thread_id, order_no, elapsed_ms)
+
+            state_rsp = self.client.get_park_order_state(order_no)
+            with self._lock:
+                if not self.success_event.is_set():
+                    self.success_event.set()
+                    self.success_order = {
+                        "orderNo": order_no,
+                        "parkList": park_list,
+                        "orderStateResponse": state_rsp,
+                    }
+                    self._notify_success(order_no, park_list)
+            return True
+
+        return False
 
     # ------------------------------------------------------------------
     # Booking pipeline
@@ -926,7 +1085,9 @@ class TennisBooker:
 
     def _try_book(self, thread_id: int, target_date: str, ballcode: str) -> bool:
         retries = int(self.strategy_cfg.get("max_retries", 30))
-        sleep_s = int(self.strategy_cfg.get("retry_interval_ms", 200)) / 1000.0
+        retry_interval_ms = int(self.strategy_cfg.get("retry_interval_ms", 200))
+        burst_count = int(self.strategy_cfg.get("burst_count", 15))
+        burst_timeout = int(self.strategy_cfg.get("burst_timeout_sec", 5))
         skip_price_check = bool(self.strategy_cfg.get("skip_price_check", False))
 
         parktypeinfo = str(self.court_cfg.get("parktypecode", "6"))
@@ -941,8 +1102,12 @@ class TennisBooker:
             if self.success_event.is_set():
                 return False
 
-            log.info("[T%s] Attempt %d/%d", thread_id, attempt, retries)
+            in_burst = attempt <= burst_count
+            effective_timeout = burst_timeout if in_burst else self.client.timeout
 
+            log.info("[T%s] Attempt %d/%d%s", thread_id, attempt, retries, " [BURST]" if in_burst else "")
+
+            t0 = time.time()
             courts_rsp = self.client.query_courts(
                 date=target_date,
                 parktypeinfo=parktypeinfo,
@@ -951,38 +1116,44 @@ class TennisBooker:
                 userid=self.client.auth.userid,
                 parkstatus=parkstatus,
                 changefieldtype="0",
+                timeout=effective_timeout,
             )
+            query_ms = (time.time() - t0) * 1000
+
             if not self.client.is_success(courts_rsp):
-                log.warning("[T%s] query_courts failed: %s", thread_id, courts_rsp.get("respMsg"))
-                time.sleep(sleep_s)
+                log.warning("[T%s] query_courts failed (%.0fms): %s", thread_id, query_ms, courts_rsp.get("respMsg"))
+                if not in_burst:
+                    time.sleep(retry_interval_ms / 1000.0)
                 continue
 
             payload = self.client.unwrap_payload(courts_rsp)
             if not isinstance(payload, dict):
-                log.warning("[T%s] query_courts payload empty.", thread_id)
-                time.sleep(sleep_s)
+                log.warning("[T%s] query_courts payload empty (%.0fms).", thread_id, query_ms)
+                if not in_burst:
+                    time.sleep(retry_interval_ms / 1000.0)
                 continue
 
             slots = self._collect_available_slots(payload, target_date=target_date)
             selected_slots = self._select_slots(slots)
             if not selected_slots:
-                log.info("[T%s] No matching slots currently available.", thread_id)
-                time.sleep(sleep_s)
+                log.info("[T%s] No matching slots (%.0fms).", thread_id, query_ms)
+                if not in_burst:
+                    time.sleep(retry_interval_ms / 1000.0)
                 continue
 
             park_list = self._to_park_list(selected_slots)
             log.info(
-                "[T%s] Candidate slots: %s",
+                "[T%s] FOUND slots (%.0fms): %s",
                 thread_id,
+                query_ms,
                 json.dumps(park_list, ensure_ascii=False),
             )
 
             price_payload = None
-            if not skip_price_check:
+            if not skip_price_check and not in_burst:
                 price_rsp = self.client.show_price_by_user(park_list, userid=self.client.auth.userid)
                 if not self.client.is_success(price_rsp):
                     log.warning("[T%s] showPriceByUser failed: %s", thread_id, price_rsp.get("respMsg"))
-                    time.sleep(sleep_s)
                     continue
                 price_payload = self.client.unwrap_payload(price_rsp)
                 wx_sum = None
@@ -993,6 +1164,7 @@ class TennisBooker:
                 if wx_sum is not None:
                     log.info("[T%s] wxPrice sum: %s", thread_id, wx_sum)
 
+            t1 = time.time()
             order_rsp = self.client.add_park_order(
                 park_list,
                 paywaycode=paywaycode,
@@ -1001,28 +1173,31 @@ class TennisBooker:
                 captcha_verification=captcha,
                 add_order_type="wx",
                 userid=self.client.auth.userid,
+                timeout=effective_timeout,
             )
+            order_ms = (time.time() - t1) * 1000
+
             if not self.client.is_success(order_rsp):
-                log.warning("[T%s] addParkOrder failed: %s", thread_id, order_rsp.get("respMsg"))
-                time.sleep(sleep_s)
+                log.warning("[T%s] addParkOrder failed (%.0fms): %s", thread_id, order_ms, order_rsp.get("respMsg"))
+                if not in_burst:
+                    time.sleep(retry_interval_ms / 1000.0)
                 continue
 
             order_payload = self.client.unwrap_payload(order_rsp)
             order_no = self._extract_order_no(order_payload)
             if not order_no:
-                log.warning("[T%s] addParkOrder succeeded but orderNo missing.", thread_id)
-                time.sleep(sleep_s)
+                log.warning("[T%s] addParkOrder ok but no orderNo (%.0fms).", thread_id, order_ms)
+                if not in_burst:
+                    time.sleep(retry_interval_ms / 1000.0)
                 continue
+
+            log.info("[T%s] SUCCESS! orderNo=%s (query %.0fms + order %.0fms)", thread_id, order_no, query_ms, order_ms)
 
             state_rsp = self.client.get_park_order_state(order_no)
             if self.client.is_success(state_rsp):
                 log.info("[T%s] getParkOrderState success for %s", thread_id, order_no)
             else:
-                log.warning(
-                    "[T%s] getParkOrderState response: %s",
-                    thread_id,
-                    state_rsp.get("respMsg"),
-                )
+                log.warning("[T%s] getParkOrderState: %s", thread_id, state_rsp.get("respMsg"))
 
             with self._lock:
                 if not self.success_event.is_set():
@@ -1055,6 +1230,15 @@ class TennisBooker:
         ballcode = self.resolve_ballcode()
         log.info("Using ballcode=%s, parktypecode=%s", ballcode, self.court_cfg.get("parktypecode", "6"))
 
+        # Pre-warm TCP+TLS connection pool
+        self.client.pre_warm_connection()
+
+        # Pre-query court structure for direct-fire orders
+        direct_fire = bool(self.strategy_cfg.get("direct_fire", True))
+        pre_park_lists: List[List[Dict[str, Any]]] = []
+        if direct_fire:
+            pre_park_lists = self._pre_query_structure(target_date, ballcode)
+
         target_dt = self._target_booking_datetime()
         if target_dt is not None:
             prewarm_sec = int(self.strategy_cfg.get("prewarm_sec", 30))
@@ -1066,16 +1250,31 @@ class TennisBooker:
                     time.sleep((prewarm_ms - now) / 1000.0)
                 log.info("Prewarm: queryBookDate once at T-%ss.", prewarm_sec)
                 self.client.query_dates()
+                # Re-warm the connection right before the critical window
+                self.client.pre_warm_connection()
 
         self.wait_for_open_time()
-        log.info("Starting booking threads...")
 
         threads = max(1, int(self.strategy_cfg.get("threads", 3)))
-        with ThreadPoolExecutor(max_workers=threads) as pool:
-            futures = [
-                pool.submit(self._try_book, idx + 1, target_date, ballcode)
-                for idx in range(threads)
-            ]
+        direct_fire_threads = int(self.strategy_cfg.get("direct_fire_threads", 2))
+        actual_df = direct_fire_threads if pre_park_lists else 0
+        total_workers = threads + actual_df
+
+        log.info(
+            "Starting %d workers: %d query + %d direct-fire (burst_count=%s)",
+            total_workers,
+            threads,
+            actual_df,
+            self.strategy_cfg.get("burst_count", 15),
+        )
+
+        with ThreadPoolExecutor(max_workers=total_workers) as pool:
+            futures = []
+            for idx in range(actual_df):
+                futures.append(pool.submit(self._direct_fire_worker, idx + 1, pre_park_lists))
+            for idx in range(threads):
+                futures.append(pool.submit(self._try_book, idx + 1, target_date, ballcode))
+
             for future in as_completed(futures):
                 try:
                     future.result()
