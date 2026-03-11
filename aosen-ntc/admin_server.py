@@ -20,7 +20,7 @@ from tennis_bot import TennisClient
 app = Flask(__name__)
 
 BASE_DIR = Path(__file__).resolve().parent
-BOT_PATH = BASE_DIR / "tennis_bot.py"
+BOT_PATH = BASE_DIR / "book_b.py"
 LOG_PATH = BASE_DIR / "tennis_bot.log"
 CRON_MARKER = "# tennis-bot-admin"
 
@@ -586,7 +586,7 @@ def api_cron_set():
 
     cron_line = (
         f"{timing['cron_minute']} {timing['cron_hour']} {timing['cron_day']} "
-        f"{timing['cron_month']} * {python_path} {BOT_PATH} book "
+        f"{timing['cron_month']} * {python_path} {BOT_PATH} "
         f">> {LOG_PATH} 2>&1 {CRON_MARKER}"
     )
 
@@ -609,7 +609,7 @@ def api_run_now():
 
     with LOG_PATH.open("a", encoding="utf-8") as log_file:
         proc = subprocess.Popen(  # noqa: S603
-            ["python3", "-u", str(BOT_PATH), "book"],
+            ["python3", "-u", str(BOT_PATH)],
             stdout=log_file,
             stderr=subprocess.STDOUT,
             cwd=str(BASE_DIR),
