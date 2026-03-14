@@ -103,13 +103,20 @@ class BookerB(TennisBooker):
         ordercode = str(self.auth_cfg.get("ordercode", "")).strip()
         captcha = str(self.auth_cfg.get("captchaVerification", "")).strip()
 
+        burst_count = max(1, int(self.strategy_cfg.get("burst_count", 15)))
+        burst_timeout = int(self.strategy_cfg.get("burst_timeout_sec", 5))
+        overall_attempt = 0
+
         for target_hour in target_hours:
             for attempt in range(1, retries_per_slot + 1):
                 if self.success_event.is_set():
                     return False
+                overall_attempt += 1
+                in_burst = overall_attempt <= burst_count
+                effective_timeout = burst_timeout if in_burst else None
 
                 log.info(
-                    "[B-T%s] Attempt %d/%d, park=%s(%s), start=%02d:00, duration=%dh",
+                    "[B-T%s] Attempt %d/%d, park=%s(%s), start=%02d:00, duration=%dh%s",
                     thread_id,
                     attempt,
                     retries_per_slot,
@@ -117,6 +124,7 @@ class BookerB(TennisBooker):
                     parkid,
                     target_hour,
                     duration,
+                    " [BURST]" if in_burst else "",
                 )
 
                 courts_rsp = self.client.query_courts(
@@ -127,16 +135,19 @@ class BookerB(TennisBooker):
                     userid=self.client.auth.userid,
                     parkstatus=parkstatus,
                     changefieldtype="0",
+                    timeout=effective_timeout,
                 )
                 if not self.client.is_success(courts_rsp):
                     log.warning("[B-T%s] query_courts failed: %s", thread_id, courts_rsp.get("respMsg"))
-                    time.sleep(sleep_s)
+                    if not in_burst:
+                        time.sleep(sleep_s)
                     continue
 
                 payload = self.client.unwrap_payload(courts_rsp)
                 if not isinstance(payload, dict):
                     log.warning("[B-T%s] query_courts payload empty.", thread_id)
-                    time.sleep(sleep_s)
+                    if not in_burst:
+                        time.sleep(sleep_s)
                     continue
 
                 slots = self._collect_available_slots(payload, target_date=target_date)
@@ -155,7 +166,8 @@ class BookerB(TennisBooker):
                         attempt,
                         retries_per_slot,
                     )
-                    time.sleep(sleep_s)
+                    if not in_burst:
+                        time.sleep(sleep_s)
                     continue
 
                 park_list = self._to_park_list(selected_slots)
@@ -164,7 +176,8 @@ class BookerB(TennisBooker):
                 price_rsp = self.client.show_price_by_user(park_list, userid=self.client.auth.userid)
                 if not self.client.is_success(price_rsp):
                     log.warning("[B-T%s] showPriceByUser failed: %s", thread_id, price_rsp.get("respMsg"))
-                    time.sleep(sleep_s)
+                    if not in_burst:
+                        time.sleep(sleep_s)
                     continue
 
                 price_payload = self.client.unwrap_payload(price_rsp)
@@ -184,17 +197,20 @@ class BookerB(TennisBooker):
                     captcha_verification=captcha,
                     add_order_type="wx",
                     userid=self.client.auth.userid,
+                    timeout=effective_timeout,
                 )
                 if not self.client.is_success(order_rsp):
                     log.warning("[B-T%s] addParkOrder failed: %s", thread_id, order_rsp.get("respMsg"))
-                    time.sleep(sleep_s)
+                    if not in_burst:
+                        time.sleep(sleep_s)
                     continue
 
                 order_payload = self.client.unwrap_payload(order_rsp)
                 order_no = self._extract_order_no(order_payload)
                 if not order_no:
                     log.warning("[B-T%s] addParkOrder succeeded but orderNo missing.", thread_id)
-                    time.sleep(sleep_s)
+                    if not in_burst:
+                        time.sleep(sleep_s)
                     continue
 
                 state_rsp = self.client.get_park_order_state(order_no)
@@ -227,6 +243,45 @@ class BookerB(TennisBooker):
             )
 
         return False
+
+    def filter_available_parks(
+        self,
+        payload: Dict[str, Any],
+        target_hours: List[int],
+        duration: int,
+    ) -> List[Tuple[int, str]]:
+        """Filter parks that have at least one bookable consecutive window."""
+        parks = self.ordered_parks_reversed(payload)
+        if not parks:
+            return parks
+
+        slots = self._collect_available_slots(payload, target_date=str(self.court_cfg.get("target_date", "")))
+        by_park: Dict[int, Dict[int, Dict[str, Any]]] = {}
+        for slot in slots:
+            pid = self._parse_int(slot.get("parkid"))
+            hour = self._parse_int(slot.get("time"))
+            if pid >= 0 and hour >= 0:
+                by_park.setdefault(pid, {})[hour] = slot
+
+        available: List[Tuple[int, str]] = []
+        for parkid, parkname in parks:
+            park_hours = by_park.get(parkid, {})
+            has_window = False
+            for target_hour in target_hours:
+                ok = True
+                for offset in range(duration):
+                    if (target_hour + offset) not in park_hours:
+                        ok = False
+                        break
+                if ok:
+                    has_window = True
+                    break
+            if has_window:
+                available.append((parkid, parkname))
+            else:
+                log.info("Filtered out %s(%s): no available %dh window in target hours.", parkname, parkid, duration)
+
+        return available
 
     def run(self) -> bool:
         self.client._require_sign_creds()
@@ -264,9 +319,10 @@ class BookerB(TennisBooker):
         if not isinstance(pre_payload, dict):
             raise RuntimeError("query_courts returned unexpected payload.")
 
-        ordered_parks = self.ordered_parks_reversed(pre_payload)
+        duration = max(1, int(self.court_cfg.get("duration_hours", 1)))
+        ordered_parks = self.filter_available_parks(pre_payload, target_hours, duration)
         if not ordered_parks:
-            raise RuntimeError("No parks found in query_courts response.")
+            raise RuntimeError("No parks with available slots found in query_courts response.")
         targets = ordered_parks
 
         order_desc = " -> ".join(f"{name}({pid})" for pid, name in targets)

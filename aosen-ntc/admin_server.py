@@ -21,6 +21,7 @@ app = Flask(__name__)
 
 BASE_DIR = Path(__file__).resolve().parent
 BOT_PATH = BASE_DIR / "book_b.py"
+MULTI_BOT_PATH = BASE_DIR / "book_multi.py"
 LOG_PATH = BASE_DIR / "tennis_bot.log"
 CRON_MARKER = "# tennis-bot-admin"
 
@@ -516,9 +517,17 @@ def api_save_config():
             "bark_url": str(incoming_notify.get("bark_url", "")).strip(),
         }
 
+        incoming_multi = data.get("multi_account", {}) if isinstance(data.get("multi_account"), dict) else {}
+        multi_updates = {
+            "enabled": bool(incoming_multi.get("enabled", False)),
+            "target_total_courts": safe_int(incoming_multi.get("target_total_courts", 1), 1),
+            "skip_courts": incoming_multi.get("skip_courts", []),
+        }
+
         update_cfg_section(cfg, "court", court_updates)
         update_cfg_section(cfg, "strategy", strategy_updates)
         update_cfg_section(cfg, "notify", notify_updates)
+        update_cfg_section(cfg, "multi_account", multi_updates)
         save_config(cfg)
         return jsonify({"ok": True, "booking_info": booking_info})
     except ValueError as exc:
@@ -584,9 +593,12 @@ def api_cron_set():
         ["which", "python3"], capture_output=True, text=True, check=False
     ).stdout.strip() or "python3"
 
+    multi_cfg = cfg.get("multi_account", {}) if isinstance(cfg.get("multi_account"), dict) else {}
+    bot_path = MULTI_BOT_PATH if multi_cfg.get("enabled") else BOT_PATH
+
     cron_line = (
         f"{timing['cron_minute']} {timing['cron_hour']} {timing['cron_day']} "
-        f"{timing['cron_month']} * {python_path} {BOT_PATH} "
+        f"{timing['cron_month']} * {python_path} {bot_path} "
         f">> {LOG_PATH} 2>&1 {CRON_MARKER}"
     )
 
@@ -610,6 +622,24 @@ def api_run_now():
     with LOG_PATH.open("a", encoding="utf-8") as log_file:
         proc = subprocess.Popen(  # noqa: S603
             ["python3", "-u", str(BOT_PATH)],
+            stdout=log_file,
+            stderr=subprocess.STDOUT,
+            cwd=str(BASE_DIR),
+        )
+    return jsonify({"ok": True, "pid": proc.pid})
+
+
+@app.post("/api/multi-run")
+def api_multi_run():
+    LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+    start_line = f"\n===== multi-account run at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} =====\n"
+    with LOG_PATH.open("a", encoding="utf-8") as marker_file:
+        marker_file.write(start_line)
+        marker_file.flush()
+
+    with LOG_PATH.open("a", encoding="utf-8") as log_file:
+        proc = subprocess.Popen(  # noqa: S603
+            ["python3", "-u", str(MULTI_BOT_PATH)],
             stdout=log_file,
             stderr=subprocess.STDOUT,
             cwd=str(BASE_DIR),

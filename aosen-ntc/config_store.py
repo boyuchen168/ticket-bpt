@@ -8,7 +8,7 @@ from __future__ import annotations
 import logging
 import os
 from datetime import datetime
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 from pymongo import MongoClient
 from pymongo.errors import PyMongoError
@@ -73,6 +73,18 @@ def load_config() -> Dict[str, Any]:
         return legacy_cfg
 
     return {}
+
+
+def load_all_user_credentials() -> List[Dict[str, Any]]:
+    """Load all user accounts from user_cookies collection."""
+    db = get_mongo_db()
+    if db is None:
+        return []
+    try:
+        return list(db["user_cookies"].find({}, {"_id": 0}))
+    except PyMongoError as exc:
+        log.warning("Load user credentials failed: %s", exc)
+        return []
 
 
 def save_config(cfg: Dict[str, Any]) -> None:

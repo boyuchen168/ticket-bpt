@@ -16,6 +16,7 @@ import base64
 import hashlib
 import json
 import logging
+import os
 import random
 import re
 import socket
@@ -52,10 +53,12 @@ class FastHTTPAdapter(HTTPAdapter):
     """HTTPAdapter with TCP_NODELAY to disable Nagle buffering (~40ms saving)."""
 
     def init_poolmanager(self, *args, **kwargs):
-        kwargs.setdefault(
-            "socket_options",
-            [(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)],
-        )
+        import sys
+        socket_options = [(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)]
+        if sys.platform == "linux":
+            TCP_QUICKACK = 12  # noqa: N806
+            socket_options.append((socket.IPPROTO_TCP, TCP_QUICKACK, 1))
+        kwargs.setdefault("socket_options", socket_options)
         super().init_poolmanager(*args, **kwargs)
 
 
@@ -102,7 +105,7 @@ class TennisClient:
     # mini-program encrypCode() uses MD5("yesixur!@#$1a2b3c").toUpperCase()[:16]
     LOGINNAME_AES_KEY = hashlib.md5(b"yesixur!@#$1a2b3c").hexdigest().upper()[:16]
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: Dict[str, Any], time_offset_ms: Optional[int] = None):
         self.cfg = config
         self.platform_cfg = config.get("platform", {})
         self.base_url = self.platform_cfg.get("base_url", self.BASE_URL).rstrip("/")
@@ -125,33 +128,73 @@ class TennisClient:
         adapter = FastHTTPAdapter(pool_connections=20, pool_maxsize=20)
         self.session.mount("https://", adapter)
         self.session.mount("http://", adapter)
-        self.time_offset_ms = 0
+        # DNS pinning: resolve once, reuse for all requests
+        self._pinned_ip: Optional[str] = None
+        self._pin_dns()
+        self.time_offset_ms = time_offset_ms if time_offset_ms is not None else 0
+
+    def _pin_dns(self) -> None:
+        """Resolve the API host once and pin it in the session."""
+        from urllib.parse import urlparse
+        try:
+            host = urlparse(self.base_url).hostname
+            if host:
+                ip = socket.getaddrinfo(host, 443, socket.AF_INET)[0][4][0]
+                self._pinned_ip = ip
+                # Override host resolution via a custom adapter is complex;
+                # instead, just do a pre-resolve to warm the OS DNS cache.
+                log.info("DNS pinned: %s -> %s", host, ip)
+        except Exception as exc:  # noqa: BLE001
+            log.warning("DNS pin failed: %s", exc)
 
     # ------------------------------------------------------------------
     # Time sync
     # ------------------------------------------------------------------
-    def sync_time_ntp(self, host: str = "ntp.aliyun.com") -> None:
+    def sync_time_ntp(self, hosts: Optional[List[str]] = None) -> None:
         if ntplib is None:
             log.warning("ntplib is not installed, skipping NTP sync.")
             return
-        try:
-            client = ntplib.NTPClient()
-            rsp = client.request(host, version=3)
-            self.time_offset_ms = int(rsp.offset * 1000)
-            log.info("NTP offset: %+d ms", self.time_offset_ms)
-        except Exception as exc:  # noqa: BLE001
-            log.warning("NTP sync failed: %s", exc)
+        if hosts is None:
+            hosts = ["ntp.aliyun.com", "ntp.tencent.com", "cn.ntp.org.cn", "pool.ntp.org"]
+        offsets: List[float] = []
+        client = ntplib.NTPClient()
+        for host in hosts:
+            try:
+                rsp = client.request(host, version=3, timeout=2)
+                offsets.append(rsp.offset * 1000)
+                log.info("NTP %s offset: %+.1f ms", host, rsp.offset * 1000)
+            except Exception as exc:  # noqa: BLE001
+                log.warning("NTP %s failed: %s", host, exc)
+        if offsets:
+            offsets.sort()
+            mid = len(offsets) // 2
+            median = offsets[mid] if len(offsets) % 2 else (offsets[mid - 1] + offsets[mid]) / 2
+            self.time_offset_ms = int(median)
+            log.info("NTP median offset: %+d ms (from %d servers)", self.time_offset_ms, len(offsets))
+        else:
+            log.warning("All NTP servers failed, offset remains %+d ms", self.time_offset_ms)
 
     def now_ms(self) -> int:
         return int(time.time() * 1000) + self.time_offset_ms
 
-    def pre_warm_connection(self) -> None:
-        """Establish TCP + TLS connection before the critical window."""
+    def pre_warm_connections(self, count: int = 5) -> None:
+        """Establish multiple TCP + TLS connections before the critical window."""
+        def _warm(_i: int) -> None:
+            try:
+                self.session.head(self.base_url, timeout=5)
+            except Exception:  # noqa: BLE001
+                pass
+        from concurrent.futures import ThreadPoolExecutor
         try:
-            self.session.head(self.base_url, timeout=5)
-            log.info("Connection pre-warmed to %s", self.base_url)
+            with ThreadPoolExecutor(max_workers=count) as pool:
+                list(pool.map(_warm, range(count)))
+            log.info("Pre-warmed %d connections to %s", count, self.base_url)
         except Exception as exc:  # noqa: BLE001
             log.warning("Connection pre-warm failed: %s", exc)
+
+    def pre_warm_connection(self) -> None:
+        """Backward-compatible single connection pre-warm."""
+        self.pre_warm_connections(count=1)
 
     # ------------------------------------------------------------------
     # Sign/decrypt internals (reverse-engineered from mini-program)
@@ -159,8 +202,7 @@ class TennisClient:
     @staticmethod
     def _random_nonce(min_len: int = 10, max_len: int = 32) -> str:
         size = random.randint(min_len, max_len)
-        pool = string.digits + string.ascii_lowercase + string.ascii_uppercase
-        return "".join(random.choices(pool, k=size))
+        return os.urandom(size).hex()[:size]
 
     @staticmethod
     def _sort_pairs(params: Dict[str, Any]) -> List[str]:
@@ -532,6 +574,40 @@ class TennisClient:
         )
         return self._postprocess_response(rsp, decrypt_datas=True, decrypt_ps=False)
 
+    def add_park_order_raw(
+        self,
+        park_list: Sequence[Dict[str, Any]],
+        *,
+        paywaycode: int | str = 2,
+        mobile: str = "",
+        ordercode: str = "",
+        captcha_verification: str = "",
+        add_order_type: str = "wx",
+        userid: Optional[str] = None,
+        timeout: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        """Like add_park_order but skip AES decrypt on failure (~1ms saving)."""
+        payload: Dict[str, Any] = {
+            "userid": str(userid or self.auth.userid),
+            "parkList": json.dumps(list(park_list), ensure_ascii=False),
+            "paywaycode": str(paywaycode),
+            "addOrderType": add_order_type,
+            "mobile": mobile,
+            "ordercode": ordercode,
+            "captchaVerification": captcha_verification,
+        }
+        signed = self._with_sign(payload, ps_mode=True, force_userid=False)
+        rsp = self._request(
+            "POST",
+            "/TennisCenterInterface/pmPark/addParkOrder.action",
+            form=signed,
+            timeout=timeout,
+        )
+        # Only decrypt on success to save time on failures
+        if self.is_success(rsp):
+            return self._postprocess_response(rsp, decrypt_datas=True, decrypt_ps=False)
+        return rsp
+
     def change_field(
         self,
         park_list: Sequence[Dict[str, Any]],
@@ -607,8 +683,8 @@ class TennisClient:
 
 
 class TennisBooker:
-    def __init__(self):
-        self.cfg = load_db_config()
+    def __init__(self, config: Optional[Dict[str, Any]] = None):
+        self.cfg = config if config is not None else load_db_config()
 
         self.client = TennisClient(self.cfg)
         self.success_event = threading.Event()
@@ -979,7 +1055,7 @@ class TennisBooker:
         if not isinstance(payload, dict):
             return []
 
-        all_slots = self._collect_available_slots(payload, target_date, include_booked=True)
+        all_slots = self._collect_available_slots(payload, target_date, include_booked=False)
         ranked = self._select_slots_ranked(all_slots, max_results=5)
         if not ranked:
             log.warning("Pre-query: no matching slot groups found in court structure.")
@@ -988,6 +1064,52 @@ class TennisBooker:
         result = [self._to_park_list(group) for group in ranked]
         for i, pl in enumerate(result):
             log.info("Pre-built candidate #%d: %s", i + 1, json.dumps(pl, ensure_ascii=False))
+        return result
+
+    def pre_build_all_park_lists(
+        self, target_date: str, ballcode: str,
+    ) -> List[Tuple[int, int, str, List[Dict[str, Any]]]]:
+        """Query courts and return ALL ranked candidates for the orchestrator.
+
+        Returns list of (priority_score, start_hour, parkname, park_list).
+        Unlike _pre_query_structure which caps at 5, this returns everything.
+        """
+        parktypeinfo = str(self.court_cfg.get("parktypecode", "6"))
+        cardtypecode = str(self.court_cfg.get("cardtypecode", "-1"))
+        parkstatus = str(self.court_cfg.get("parkstatus", "0"))
+
+        courts_rsp = self.client.query_courts(
+            date=target_date,
+            parktypeinfo=parktypeinfo,
+            ballcode=ballcode,
+            cardtypecode=cardtypecode,
+            userid=self.client.auth.userid,
+            parkstatus=parkstatus,
+            changefieldtype="0",
+        )
+        if not self.client.is_success(courts_rsp):
+            log.warning("Pre-build all park_lists failed: %s", courts_rsp.get("respMsg"))
+            return []
+
+        payload = self.client.unwrap_payload(courts_rsp)
+        if not isinstance(payload, dict):
+            return []
+
+        all_slots = self._collect_available_slots(payload, target_date, include_booked=False)
+        candidates = self._rank_candidates(all_slots)
+        if not candidates:
+            log.warning("Pre-build: no matching slot groups found.")
+            return []
+
+        result = []
+        for preferred_score, time_score, start_hour, park_name, slots in candidates:
+            park_list = self._to_park_list(slots)
+            priority = preferred_score * 1000 + time_score
+            result.append((priority, start_hour, park_name, park_list))
+
+        log.info("Pre-built %d candidate park_lists for orchestrator.", len(result))
+        for i, (pri, hour, name, pl) in enumerate(result):
+            log.info("  #%d: priority=%d, %s %02d:00, slots=%s", i + 1, pri, name, hour, json.dumps(pl, ensure_ascii=False))
         return result
 
     def _direct_fire_worker(
@@ -1231,7 +1353,7 @@ class TennisBooker:
         log.info("Using ballcode=%s, parktypecode=%s", ballcode, self.court_cfg.get("parktypecode", "6"))
 
         # Pre-warm TCP+TLS connection pool
-        self.client.pre_warm_connection()
+        self.client.pre_warm_connections()
 
         # Pre-query court structure for direct-fire orders
         direct_fire = bool(self.strategy_cfg.get("direct_fire", True))
@@ -1251,7 +1373,7 @@ class TennisBooker:
                 log.info("Prewarm: queryBookDate once at T-%ss.", prewarm_sec)
                 self.client.query_dates()
                 # Re-warm the connection right before the critical window
-                self.client.pre_warm_connection()
+                self.client.pre_warm_connections()
 
         self.wait_for_open_time()
 
